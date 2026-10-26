@@ -38,6 +38,8 @@ const styles = StyleSheet.create({
 
     buttonContainer: {
         marginTop: 24,
+        marginLeft: 10,
+        marginRight: 10,
         gap: 8,
     },
 
