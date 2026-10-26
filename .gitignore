@@ -1,3 +1,43 @@
+# Claude Code
 **/.claude
-/Frontend/node_modules
+
+# ---------- Frontend ----------
+/Frontend/node_modules/
 /Frontend/.env
+/Frontend/.env.*
+!/Frontend/.env.example
+/Frontend/*.log
+/Frontend/.DS_Store
+/Frontend/Thumbs.db
+/Frontend/.idea/
+
+# ---------- Backend ----------
+# Binaries
+/Backend/bin/
+/Backend/*.exe
+/Backend/*.exe~
+/Backend/*.dll
+/Backend/*.so
+/Backend/*.dylib
+
+# Test output / coverage
+/Backend/*.test
+/Backend/*.out
+/Backend/coverage.*
+
+# Vendored deps & workspace
+/Backend/vendor/
+/Backend/go.work
+/Backend/go.work.sum
+
+# Environment variables / secrets
+/Backend/.env
+/Backend/.env.*
+!/Backend/.env.example
+
+# Misc
+/Backend/*.log
+/Backend/tmp/
+/Backend/.DS_Store
+/Backend/Thumbs.db
+/Backend/.idea/
