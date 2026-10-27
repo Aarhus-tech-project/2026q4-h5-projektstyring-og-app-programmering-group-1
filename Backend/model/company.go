@@ -1,9 +1,15 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Company struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
+	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	Name      string    `json:"name"`
+	Address   string    `json:"address"`
+	CVR       string    `json:"cvr"`
 	CreatedAt time.Time `json:"created_at"`
 }
