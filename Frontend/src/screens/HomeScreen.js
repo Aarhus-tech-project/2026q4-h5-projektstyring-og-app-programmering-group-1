@@ -34,8 +34,9 @@ export default function HomeScreen({ navigation }) {
                         </Pressable>
                 </View>
 
+                {/* PLACEHOLDER FOR COMPANY SIGNUP */}
                 <View style={styles.buttonContainer}>
-                    <Pressable style={styles.secondaryButton}>
+                    <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('CompanySignup')}>
                             <Text style={styles.secondaryButtonText}>indstillinger</Text>
                     </Pressable>
                 </View>
