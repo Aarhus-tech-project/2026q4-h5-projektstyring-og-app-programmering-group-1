@@ -35,7 +35,7 @@ export default function HomeScreen({ navigation }) {
                 </View>
 
                 <View style={styles.buttonContainer}>
-                    <Pressable style={styles.secondaryButton}>
+                    <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('Settings')}>
                             <Text style={styles.secondaryButtonText}>indstillinger</Text>
                     </Pressable>
                 </View>
