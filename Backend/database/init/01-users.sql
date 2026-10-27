@@ -3,7 +3,7 @@
 
 CREATE TABLE users (
     id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id    UUID        NOT NULL, -- FK to companies(id), added when that table exists
+    company_id    UUID        NOT NULL, -- FK added in 02-companies.sql
     name          TEXT        NOT NULL,
     email         TEXT        NOT NULL UNIQUE,
     password_hash TEXT        NOT NULL,

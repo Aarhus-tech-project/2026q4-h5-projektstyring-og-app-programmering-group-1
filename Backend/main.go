@@ -1,69 +1,68 @@
 package main
 
 import (
-	"context"
-	"database/sql"
 	"log"
-	"net/http"
 	"os"
 	"time"
 
+	"net/http"
+
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
+
+	"lagerklar/backend/database"
+	"lagerklar/backend/routers"
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found; using environment variables")
-	}
-
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		log.Fatal("DATABASE_URL is not set")
-	}
-
-	db, err := sql.Open("pgx", databaseURL)
+	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Could not open database connection: ", err)
+		log.Println("No .env file found")
 	}
-	defer db.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := db.PingContext(ctx); err != nil {
+	if err := database.Init(); err != nil {
 		log.Fatal("Could not connect to database: ", err)
 	}
-
+	defer database.Close()
 	log.Println("Connected to PostgreSQL")
 
-	router := gin.Default()
-	router.SetTrustedProxies(nil)
+	server := gin.Default()
+	server.SetTrustedProxies(nil)
 
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	server.Use(cors.New(cors.Config{
+		AllowOrigins: []string{
+			"http://localhost:5173",
+		},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
+	server.GET("/", func(c *gin.Context) {
+		c.File("templates/index.html")
 	})
 
-	router.GET("/health/db", func(c *gin.Context) {
-		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
-		defer cancel()
-
-		if err := db.PingContext(ctx); err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"status":   "error",
-				"database": "unavailable",
+	public := server.Group("/v1/")
+	public.Use()
+	{
+		public.GET("/health", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"status": "ok",
 			})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"status":   "ok",
-			"database": "connected",
 		})
-	})
 
-	if err := router.Run(":8080"); err != nil {
+		public.POST("/login", routers.Login)
+	}
+
+	PORT := os.Getenv("PORT")
+	if PORT == "" {
+		PORT = "8080"
+	}
+
+	if err := server.Run(":" + PORT); err != nil {
 		log.Fatal(err)
 	}
+
 }

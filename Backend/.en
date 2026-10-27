@@ -1,7 +1,0 @@
-# Copy to .env and change the password. Do not commit .env to GitHub.
-POSTGRES_DB=lagerklar
-POSTGRES_USER=lagerklar
-POSTGRES_PASSWORD=change-me
-
-# Connection string for the Go/Gin backend
-DATABASE_URL=postgres://lagerklar:change-me@localhost:5432/lagerklar?sslmode=disable
