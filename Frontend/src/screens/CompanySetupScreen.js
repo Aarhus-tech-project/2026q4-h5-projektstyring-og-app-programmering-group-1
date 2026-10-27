@@ -12,19 +12,20 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MoveLeft } from 'lucide-react-native';
 
-import styles from '../styles/RestaurantSetupStyles';
+import styles from '../styles/CompanySetupStyles';
 
-export default function RestaurantSetupScreen({ navigation }) {
-    const [restaurantName, setRestaurantName] = useState('');
+
+export default function CompanySetupScreen({ navigation }) {
+    const [companyName, setCompanyName] = useState('');
     const [address, setAddress] = useState('');
     const [cvrNumber, setCvrNumber] = useState('');
 
 
-    function handleCreateRestaurant() {
-        if (!restaurantName.trim() || !address.trim() || !cvrNumber.trim()) {
+    function handleCreateCompany() {
+        if (!companyName.trim() || !address.trim() || !cvrNumber.trim()) {
             Alert.alert(
                 'Manglede oplysninger',
-                'Udfyld Restaurantnavn, Adresse og CVR-nummer for at fortætte.'
+                'Udfyld Firmanavn, Adresse og CVR-nummer for at fortætte.'
             );
             return;
         }
@@ -39,16 +40,17 @@ export default function RestaurantSetupScreen({ navigation }) {
 
 
 
-        const restaurantData = {
-            name: restaurantName.trim(),
+
+        const companyData = {
+            name: companyName.trim(),
             address: address.trim(),
             cvrNumber: cvrNumber.trim(),
         };
 
-        console.log('Restaurant data:', restaurantData);
+        console.log('Company data:', companyData);
         Alert.alert(
-            'Restaurant oprettet',
-            'Din restaurant er blevet oprettet. PLACEHOLDER BACKEND NOT SETUP'
+            'Virksomhed oprettet',
+            'Din virksomhed er blevet oprettet. PLACEHOLDER BACKEND NOT SETUP'
         );
 }
 
@@ -74,32 +76,23 @@ export default function RestaurantSetupScreen({ navigation }) {
                         </Text>
 
                         <Text style={styles.title}>
-                            Opret din restaurant
+                            Opret din virksomhed
                         </Text>
 
                         <Text style={styles.description}>
-                            Indtast oplysningerne om din restaurant for at komme i gang
+                            Indtast oplysningerne om din virksomhed for at komme i gang
                         </Text>
 
-                        <Text style={styles.label}>Restaurantens navn</Text>
+                        <Text style={styles.label}>Virksomhedens navn</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="F.eks. Minh's mad hus"
                             placeholderTextColor="#9CA3AF"
-                            value={restaurantName}
-                            onChangeText={setRestaurantName}
+                            value={companyName}
+                            onChangeText={setCompanyName}
                             autoCapitalize='words'
                             />
 
-                        <Text style={styles.label}>Adresse</Text>
-                        <TextInput
-                        style={styles.input}
-                        placeholder="F.eks. Øster Voldgade 4A, 1350 København"
-                        placeholderTextColor="#9CA3AF"
-                        value={address}
-                        onChangeText={setAddress}
-                        autoCapitalize="words"
-                        />
 
                         <Text style={styles.label}>CVR-nummer</Text>
                         <TextInput
@@ -112,12 +105,23 @@ export default function RestaurantSetupScreen({ navigation }) {
                             autoCapitalize="words"
                         />
 
+                        <Text style={styles.label}>Adresse</Text>
+                        <TextInput
+                        style={styles.input}
+                        placeholder="F.eks. Øster Voldgade 4A, 1350 København"
+                        placeholderTextColor="#9CA3AF"
+                        value={address}
+                        onChangeText={setAddress}
+                        autoCapitalize="words"
+                        />
+
+
                         <Pressable
                         style={styles.primaryButton}
-                        onPress={handleCreateRestaurant}
+                        onPress={handleCreateCompany}
                         >
                             <Text style={styles.primaryButtonText}>
-                                Opret restaurant
+                                Opret virksomhed
                             </Text>
                         </Pressable>
                             
