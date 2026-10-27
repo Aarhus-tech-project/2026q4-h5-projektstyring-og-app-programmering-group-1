@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import colors from '../constants/colors'; 
 
 const styles = StyleSheet.create({
     keyboardContainer: {
@@ -9,7 +10,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         padding: 24,
-        backgroundColor: '#F3F6FC',
+        backgroundColor: colors.background,
     },
 
     loginCard: {
@@ -32,32 +33,26 @@ const styles = StyleSheet.create({
 
     backButton: {
         alignSelf: 'flex-start',
-        marginBottom: 28,
-    },
-
-    backButtonText: {
-        color: '#2563EB',
-        fontSize: 16,
-        fontWeight: '600',
+        marginBottom: 12,
     },
 
     brand: {
-        color: '#2563EB',
-        fontSize: 13,
+        color: colors.primary,
+        fontSize: 23,
         fontWeight: '700',
         letterSpacing: 1.2,
-        marginBottom: 36,
+        marginBottom: 10,
     },
 
     welcomeText: {
-        color: '#4B5563',
+        color: colors.text.secondary,
         fontSize: 16,
         fontWeight: '500',
-        marginBottom: 8,
+        marginBottom: 5,
     },
 
     title: {
-        color: '#111827',
+        color: colors.text.primary,
         fontSize: 28,
         fontWeight: '700',
         lineHeight: 34,
@@ -88,7 +83,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: 52,
-        backgroundColor: '#2563EB',
+        backgroundColor: colors.primary,
         borderRadius: 12,
         marginTop: 10,
     },
@@ -111,9 +106,9 @@ const styles = StyleSheet.create({
     },
 
     signUpLink: {
-        color: '#2563EB',
+        color: '#57585a',
         fontSize: 14,
-        fontWeight: '700',
+        fontWeight: '900',
     },
 
     signUpScrollContent: {
