@@ -1,10 +1,11 @@
 import { StyleSheet } from 'react-native';
+import colors from '../constants/colors';
 
 
 const styles = StyleSheet.create({
     safeArea: {
     flex: 1,
-    backgroundColor: '#F6F7FB',
+    backgroundColor: colors.background,
     },
 
     container: {
@@ -14,8 +15,19 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     },
 
+    logoBox: {
+    width: 96,
+    height: 96,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: colors.primary,
+    marginBottom: 1,
+    },
+
     eyebrow: {
-    color: '#2563EB',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 1,
@@ -24,7 +36,7 @@ const styles = StyleSheet.create({
     },
 
     title: {
-    color: '#111827',
+    color: colors.text.primary,
     fontSize: 36,
     fontWeight: '700',
     marginBottom: 12,
@@ -45,7 +57,7 @@ const styles = StyleSheet.create({
 
     primaryButton: {
     alignItems: 'center',
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     },

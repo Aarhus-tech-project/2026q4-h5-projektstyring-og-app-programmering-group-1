@@ -2,7 +2,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {  Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { useState } from 'react';
 import styles from '../styles/homeStyles';
-
+import { Package } from 'lucide-react-native';
 export default function HomeScreen({ navigation }) {
 
     const [isLoginModalVisible, setIsLoginModalVisible] = useState(false);
@@ -15,6 +15,9 @@ export default function HomeScreen({ navigation }) {
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.container}>
                     <View>
+                        <View style={styles.logoBox}>
+                            <Package size={64} color="#FFFFFF" strokeWidth={2.5} />
+                        </View>
                         <Text style={styles.eyebrow}>LAGERKLAR</Text>
                         <Text style={styles.title}>velkommen</Text>
                         <Text style={styles.description}>
