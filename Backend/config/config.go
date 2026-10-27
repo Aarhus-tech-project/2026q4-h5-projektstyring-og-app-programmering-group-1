@@ -9,6 +9,7 @@ import (
 type Config struct {
 	PORT        string
 	ENVIRONMENT string
+	SECRET_KEY  string
 }
 
 func Load() *Config {
@@ -16,5 +17,6 @@ func Load() *Config {
 	return &Config{
 		ENVIRONMENT: os.Getenv("ENVIRONMENT"),
 		PORT:        os.Getenv("PORT"),
+		SECRET_KEY:  os.Getenv("SECRET_KEY"),
 	}
 }

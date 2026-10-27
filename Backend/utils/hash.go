@@ -1,0 +1,18 @@
+package utils
+
+import "golang.org/x/crypto/bcrypt"
+
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword(
+		[]byte(password),
+		bcrypt.DefaultCost, // cost = 10 (safe default)
+	)
+	return string(bytes), err
+}
+
+func CheckPasswordHash(hash, password string) bool {
+	return bcrypt.CompareHashAndPassword(
+		[]byte(hash),
+		[]byte(password),
+	) == nil
+}
