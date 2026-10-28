@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API - Server</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #132033;
+      --muted: #5d6b82;
+      --accent: #1f6feb;
+      --border: #dbe4f0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(135deg, #eef3ff 0%, #f8fafc 50%, #e8f0ff 100%);
+      color: var(--text);
+    }
+
+    .card {
+      width: min(92vw, 560px);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 16px 40px rgba(19, 32, 51, 0.08);
+      text-align: center;
+    }
+
+    .settings-icon {
+      display: block;
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 20px;
+      color: var(--accent);
+      animation: spin 5s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .settings-icon { animation: none; }
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 2rem;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-bottom: 16px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(31, 111, 235, 0.1);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <svg class="settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M 12.000 4.300 L 13.305 2.086 L 14.588 2.341 L 15.827 2.761 L 17.000 3.340 L 16.687 5.891 L 17.445 6.555 L 19.934 5.912 L 20.660 7.000 L 21.239 8.173 L 21.659 9.412 L 19.634 10.995 L 19.700 12.000 L 21.914 13.305 L 21.659 14.588 L 21.239 15.827 L 20.660 17.000 L 18.109 16.687 L 17.445 17.445 L 18.088 19.934 L 17.000 20.660 L 15.827 21.239 L 14.588 21.659 L 13.005 19.634 L 12.000 19.700 L 10.695 21.914 L 9.412 21.659 L 8.173 21.239 L 7.000 20.660 L 7.313 18.109 L 6.555 17.445 L 4.066 18.088 L 3.340 17.000 L 2.761 15.827 L 2.341 14.588 L 4.366 13.005 L 4.300 12.000 L 2.086 10.695 L 2.341 9.412 L 2.761 8.173 L 3.340 7.000 L 5.891 7.313 L 6.555 6.555 L 5.912 4.066 L 7.000 3.340 L 8.173 2.761 L 9.412 2.341 L 10.995 4.366 Z"/>
+      <circle cx="12" cy="12" r="3.2"/>
+    </svg>
+    <div class="badge">Api Server</div>
+    <h1>Running ...</h1>
+  </main>
+</body>
+</html>
