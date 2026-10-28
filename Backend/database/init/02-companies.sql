@@ -1,9 +1,9 @@
 CREATE TABLE companies (
     id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     name       TEXT        NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    cvr        VARCHAR(8)  NOT NULL UNIQUE,
+    address    TEXT        NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT companies_cvr_format_check
+        CHECK (cvr ~ '^[0-9]{8}$')
 );
-
-ALTER TABLE users
-    ADD CONSTRAINT users_company_id_fkey
-    FOREIGN KEY (company_id) REFERENCES companies (id);

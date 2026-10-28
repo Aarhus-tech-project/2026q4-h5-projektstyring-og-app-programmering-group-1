@@ -53,6 +53,7 @@ func main() {
 			})
 		})
 
+		public.POST("/register", routers.Register)
 		public.POST("/login", routers.Login)
 	}
 
