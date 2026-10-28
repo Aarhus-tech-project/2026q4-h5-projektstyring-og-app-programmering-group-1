@@ -11,7 +11,8 @@ export default function SignupScreen({ navigation }) {
     const [confirmEmail, setConfirmEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
 
     function handleSignUp() {
         if (email !== confirmEmail) {
@@ -49,6 +50,32 @@ export default function SignupScreen({ navigation }) {
                         <Text style={styles.brand}>LAGERKLAR</Text>
 
                         <Text style={styles.welcomeText}>Opret en ny konto</Text>
+
+                        <View style={styles.nameFieldsRow}>
+                            <View style={styles.nameField}>
+                                <Text style={styles.label}>Fornavn</Text>
+                                <TextInput
+                                style={styles.input}
+                                placeholder="Fornavn"
+                                placeholderTextColor="#9CA3AF"
+                                value={firstName}
+                                onChangeText={setFirstName}
+                                autoCapitalize="none"
+                                keyboardType="name-first"/>
+                            </View>
+                        
+                            <View style={styles.nameField}>
+                                <Text style={styles.label}>Efternavn</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Efternavn"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={lastName}
+                                    onChangeText={setLastName}
+                                    autoCapitalize="none"
+                                    keyboardType="name-last"/>
+                            </View>
+                        </View>
 
                         <Text style={styles.label}>Email</Text>
                         <TextInput
