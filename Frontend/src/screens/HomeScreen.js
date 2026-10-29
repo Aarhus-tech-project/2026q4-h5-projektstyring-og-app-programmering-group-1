@@ -34,8 +34,16 @@ export default function HomeScreen({ navigation }) {
                         </Pressable>
                 </View>
 
-                {/* PLACEHOLDER FOR COMPANY SIGNUP */}
                 <View style={styles.buttonContainer}>
+                    <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('SignUp')}>
+                            <Text style={styles.secondaryButtonText}>Opret en konto</Text>
+                    </Pressable>
+                </View>
+
+
+                <View style={styles.buttonContainer}>
+                    <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('ProfileScreen')}>
+                            <Text style={styles.secondaryButtonText}>TEST BUTTON</Text>
                     <Pressable style={styles.secondaryButton}>
                             <Text style={styles.secondaryButtonText}>indstillinger</Text>
                     </Pressable>
