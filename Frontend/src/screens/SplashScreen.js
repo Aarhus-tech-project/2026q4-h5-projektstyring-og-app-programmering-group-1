@@ -8,10 +8,10 @@ const SPLASH_DURATION = 2000;
 
 export default function SplashScreen({ navigation }) {
 
-   /*  useEffect(() => {
+    useEffect(() => {
         const timer = setTimeout(() => navigation.replace('Home'), SPLASH_DURATION);
         return () => clearTimeout(timer);
-    }, [navigation]); */
+    }, [navigation]);
 
     return (
         <SafeAreaView style={styles.safeArea}>
