@@ -1,10 +1,9 @@
 CREATE TABLE companies (
     id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     name       TEXT        NOT NULL,
-    user_id    UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    cvr        VARCHAR(8)  NOT NULL UNIQUE,
     address    TEXT        NOT NULL,
-    cvr        TEXT        NOT NULL UNIQUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT companies_cvr_format_check
+        CHECK (cvr ~ '^[0-9]{8}$')
 );
-
-
