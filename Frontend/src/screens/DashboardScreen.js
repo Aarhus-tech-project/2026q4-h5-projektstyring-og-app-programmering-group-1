@@ -37,7 +37,7 @@ export default function DashboardScreen({ navigation }) {
         Alert.alert(company.name, 'Lageroversigten kommer snart.');
     };
 
-    const addCompany = () => navigation.navigate('CompanySetup');
+    const addCompany = () => navigation.navigate('CompanySignup');
 
     return (
         <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>

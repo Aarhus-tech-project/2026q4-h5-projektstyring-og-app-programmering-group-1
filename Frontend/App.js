@@ -8,6 +8,8 @@ import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import CompanySetupScreen from './src/screens/CompanySetupScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import DashboardScreen from './src/screens/DashboardScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -16,7 +18,7 @@ export default function App() {
     <SafeAreaProvider>
       <NavigationContainer>
         <Stack.Navigator
-          initialRouteName="Splash"
+          initialRouteName="Dashboard"
         >
           <Stack.Screen
             name="Splash"
@@ -51,6 +53,18 @@ export default function App() {
             <Stack.Screen
             name="ProfileScreen"
             component={ProfileScreen}
+            options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+            name="Dashboard"
+            component={DashboardScreen}
+            options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+            name="Settings"
+            component={SettingsScreen}
             options={{ headerShown: false }}
             />
         </Stack.Navigator>
