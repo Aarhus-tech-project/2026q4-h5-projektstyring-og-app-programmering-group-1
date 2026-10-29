@@ -8,10 +8,10 @@ const SPLASH_DURATION = 2000;
 
 export default function SplashScreen({ navigation }) {
 
-    useEffect(() => {
+   /*  useEffect(() => {
         const timer = setTimeout(() => navigation.replace('Home'), SPLASH_DURATION);
         return () => clearTimeout(timer);
-    }, [navigation]);
+    }, [navigation]); */
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -20,12 +20,7 @@ export default function SplashScreen({ navigation }) {
                     <PackageCheck size={56} color="#FFFFFF" strokeWidth={2.2} />
                 </View>
                 <Text style={styles.title}>Lagerstyr</Text>
-                <Text style={styles.subtitle}>Styr på lager og udløbsdatoer</Text>
-            </View>
-
-            <View style={styles.bottom}>
-                <LoadingDots />
-                <Text style={styles.tagline}>TIL SMÅ RESTAURANTER</Text>
+                <Text style={styles.subtitle}>Styr på lager</Text>
             </View>
         </SafeAreaView>
     );
