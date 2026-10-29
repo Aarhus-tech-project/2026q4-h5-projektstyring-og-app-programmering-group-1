@@ -18,7 +18,7 @@ export default function App() {
     <SafeAreaProvider>
       <NavigationContainer>
         <Stack.Navigator
-          initialRouteName="Dashboard"
+          initialRouteName="Splash"
         >
           <Stack.Screen
             name="Splash"
