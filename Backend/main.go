@@ -59,6 +59,7 @@ func main() {
 	}
 	protected := server.Group("/v1")
 	protected.Use(middleware.RequireAuth())
+	protected.POST("/companies", routers.CreateCompany)
 
 	protected.GET("/me", func(c *gin.Context) {
 		userID, _ := c.Get("userID")
