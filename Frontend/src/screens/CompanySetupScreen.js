@@ -12,20 +12,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, ArrowRight, Building2 } from 'lucide-react-native';
+import http from "../../http/http";
 
 import colors from '../constants/colors';
 import styles from '../styles/CompanySetupStyles';
 
 
-// PLACEHOLDER: skal erstattes med kald til backend CVR-opslag
-async function lookupCompany(cvrNumber) {
-    return {
-        name: 'Nordic Bistro',
-        street: 'Søndergade 12',
-        city: '8700 Horsens',
-        cvrNumber,
-    };
-}
 
 function getInitials(name) {
     return name
@@ -59,8 +51,8 @@ export default function CompanySetupScreen({ navigation }) {
 
         setIsSearching(true);
         try {
-            const result = await lookupCompany(cvrNumber);
-            setCompany(result);
+            const res = await http.get(`/v1/cvr=${cvrNumber}/userID=19f6548d-396e-4446-b907-753f0106b67e`);
+            console.log('Company data:', res.data);
         } catch (error) {
             Alert.alert(
                 'Virksomhed ikke fundet',

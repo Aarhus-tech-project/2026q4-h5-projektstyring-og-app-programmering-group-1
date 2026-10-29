@@ -59,17 +59,20 @@ func main() {
 	}
 	protected := server.Group("/v1")
 	protected.Use(middleware.RequireAuth())
-
-	protected.GET("/me", func(c *gin.Context) {
-		userID, _ := c.Get("userID")
-		c.JSON(http.StatusOK, gin.H{
-			"success": true,
-			"message": "Authenticated user",
-			"data": gin.H{
-				"user_id": userID,
-			},
+	{
+		// GET //
+		protected.GET("/me", func(c *gin.Context) {
+			userID, _ := c.Get("userID")
+			c.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"message": "Authenticated user",
+				"data": gin.H{
+					"user_id": userID,
+				},
+			})
 		})
-	})
+		protected.GET("/cvr=:cvr/userID=:userID", routers.ResearchCVR)
+	}
 
 	PORT := os.Getenv("PORT")
 	if PORT == "" {
