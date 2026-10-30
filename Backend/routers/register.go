@@ -2,6 +2,7 @@ package routers
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 
@@ -81,6 +82,7 @@ func Register(c *gin.Context) {
 	).Scan(&userID)
 
 	if err != nil {
+		log.Println("Create user database error:", err)
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			c.JSON(http.StatusConflict, gin.H{

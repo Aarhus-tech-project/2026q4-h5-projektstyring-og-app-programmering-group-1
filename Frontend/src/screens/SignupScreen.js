@@ -13,22 +13,94 @@ export default function SignupScreen({ navigation }) {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
-    function handleSignUp() {
-        if (email !== confirmEmail) {
-            Alert.alert('Email matcher ikke', 'Sørg for at email og bekræft email er ens.');
+    async function handleSignUp() {
+        const trimmedFirstName = firstName.trim();
+        const trimmedLastName = lastName.trim();
+        const trimmedEmail = email.trim().toLocaleLowerCase();
+
+        if (!trimmedFirstName || !trimmedLastName) {
+            Alert.alert(
+                'Manglende navn',
+                'Udfyld både fornavn of efternavn.'
+            );
+            return;
+        }
+
+        if (trimmedEmail !== confirmEmail.trim().toLocaleLowerCase()) {
+            Alert.alert(
+                'Email matcher ikke',
+                'Sørg for at email og bekræft email matcher.'
+            );
             return;
         }
 
         if (password !== confirmPassword) {
-            Alert.alert('Password matcher ikke', 'Sørg for at password og bekræft password er ens.');
+            Alert.alert(
+                'Passwword matcher ikke',
+                'Sørg for at password og bekræft password matcher.'
+            );
             return;
         }
 
-        Alert.alert('Konto oprettet', 'Din konto er blevet oprettet. Du kan nu logge ind. PLACEHOLDER BACKEND NOT SETUP');
+        if (password.length < 8) {
+            Alert.alert(
+                'Password er for kort',
+                'Paasword skal være mindst 8 tegn langt.'
+            );
+            return;
+        }
 
-        // BACKEND IS NOT ADDED YET, SO THIS IS JUST A PLACEHOLDER FOR NOW
+        setIsLoading(true);
+
+
+        try {
+            const response = await fetch('http://172.31.0.151:8080/v1/register', { // REPLACE THIS WHEN SERVER IS UP AND RUNNING
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: `${trimmedFirstName} ${trimmedLastName}`,
+                    email: trimmedEmail,
+                    password,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                Alert.alert(
+                    'Kunne ikke oprette konto',
+                    result.message || 'Der optod en fejl ved oprettelse of kontoen.'
+                );
+                return;
+            }
+
+            Alert.alert(
+            'Konto oprettet',
+            'Din konto er oprettet. Du kan nu logge ind.',
+            [
+                {
+                    text: 'OK',
+                    onPress: () => navigation.replace('Login'),
+                },
+            ]
+        );
+    } catch (error) {
+        console.error('Registration request failed:', error);
+
+        Alert.alert(
+            'Forbindelsesfejl',
+            'Kunne ikke få forbindelse til serveren. Tjek din internetforbindelse og prøv igen.'
+        );
+    } finally {
+        setIsLoading(false);
     }
+}
+
+
 
     return (
         <KeyboardAvoidingView
@@ -119,8 +191,14 @@ export default function SignupScreen({ navigation }) {
                             autoCapitalize="none"/>
                             
 
-                        <Pressable style={styles.loginButton} onPress={handleSignUp}>
-                            <Text style={styles.loginButtonText}>Opret konto</Text>
+                        <Pressable
+                        style={styles.loginButton}
+                        onPress={handleSignUp}
+                        disabled={isLoading}>
+                            <Text
+                            style={styles.loginButtonText}>
+                                {isLoading ? 'Opretter konto...' : 'Opret konto'}
+                                </Text>
                         </Pressable>
 
                         

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SERVER_IP } from "@env";
+const SERVER_IP = "http://172.31.0.151:8080/v1"
 
 const http = axios.create({
   baseURL: SERVER_IP,

@@ -1,7 +1,8 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View, Alert } from 'react-native';
 import { useState } from 'react'
 import { MoveLeft } from 'lucide-react-native';
+import { useAuth } from '../AuthContext/AuthContext';
 import styles from '../styles/loginStyles';
 
 
@@ -9,8 +10,41 @@ import styles from '../styles/loginStyles';
 
 export default function LoginScreen({ navigation }) {
 
+    const { login } = useAuth();
+    const [isLoading, setIsLoading] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+
+
+    async function handleLogin() {
+        if (!email.trim() || !password) {
+            Alert.alert(
+                'Manglende oplysinger',
+                'Indast både email og password'
+            );
+            return;
+        }
+
+        setIsLoading(true);
+
+        try {
+            const loginData = await login(email, password);
+
+            console.log('Logged in user: ', loginData.user);
+            console.log('User companies: ', loginData.companies);
+
+            navigation.replace('ProfileScreen');
+        } catch (error) {
+            console.error('Login failed: ' , error);
+
+            Alert.alert(
+                'Kunne ikke logge ind',
+                error.message || 'Der optod en fejl under login'
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    }
 
     return (
         <KeyboardAvoidingView
@@ -52,9 +86,13 @@ export default function LoginScreen({ navigation }) {
 
                         <Pressable
                             style={styles.loginButton}
-                            onPress={() => console.log({ email, password })}>
+                            onPress={handleLogin}
+                            disabled={isLoading}
+                            >
 
-                            <Text style={styles.loginButtonText}>Log ind</Text>
+                            <Text style={styles.loginButtonText}>
+                                {isLoading ? 'Logger ind...' : 'logind'}
+                                </Text>
                         </Pressable>
 
                         <View Style={styles.signUpRow}>
