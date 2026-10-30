@@ -2,6 +2,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AuthProvider } from './src/AuthContext/AuthContext';
+
 import SplashScreen from './src/screens/SplashScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import LoginScreen from './src/screens/LoginScreen';
@@ -13,48 +15,50 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName="Splash"
-        >
-          <Stack.Screen
-            name="Splash"
-            component={SplashScreen}
-            options={{ headerShown: false }}
-          />
-
-          <Stack.Screen
-            name="Home"
-            component={HomeScreen}
-            options={{ headerShown: false }}
-          />
-
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
-
-          <Stack.Screen
-            name="SignUp"
-            component={SignupScreen}
-            options={{ headerShown: false }}
+    <AuthProvider>
+      <SafeAreaProvider>
+        <NavigationContainer>
+          <Stack.Navigator
+            initialRouteName="Splash"
+          >
+            <Stack.Screen
+              name="Splash"
+              component={SplashScreen}
+              options={{ headerShown: false }}
             />
 
             <Stack.Screen
-            name="CompanySignup"
-            component={CompanySetupScreen}
-            options={{ headerShown: false }}
+              name="Home"
+              component={HomeScreen}
+              options={{ headerShown: false }}
             />
 
             <Stack.Screen
-            name="ProfileScreen"
-            component={ProfileScreen}
-            options={{ headerShown: false }}
+              name="Login"
+              component={LoginScreen}
+              options={{ headerShown: false }}
             />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+
+            <Stack.Screen
+              name="SignUp"
+              component={SignupScreen}
+              options={{ headerShown: false }}
+              />
+
+              <Stack.Screen
+              name="CompanySignup"
+              component={CompanySetupScreen}
+              options={{ headerShown: false }}
+              />
+
+              <Stack.Screen
+              name="ProfileScreen"
+              component={ProfileScreen}
+              options={{ headerShown: false }}
+              />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </AuthProvider>
   );
 }

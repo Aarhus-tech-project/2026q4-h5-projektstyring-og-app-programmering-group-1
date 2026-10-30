@@ -9,6 +9,8 @@ import {
     UserRound,
 } from 'lucide-react-native';
 
+import { useAuth } from '../AuthContext/AuthContext';
+
 import colors from '../constants/colors';
 import styles from '../styles/ProfileStyles';
 
@@ -63,7 +65,11 @@ function TESTPROFILEBUTTON4() {
 }
 
 export default function ProfileScreen({ navigation }) {
+
+    const { user, logout } = useAuth();
+
     return (
+
         <SafeAreaView style={styles.safeArea}>
             <ScrollView
             contentContainerStyle={styles.container}
@@ -90,9 +96,11 @@ export default function ProfileScreen({ navigation }) {
                         <UserRound size={36} color="#FFFFFF"/>
                     </View>
 
-                    <Text sttyle={styles.userName}>Brugernavn</Text>
+                    <Text sttyle={styles.userName}>
+                        {user?.name || 'Bruger Navn'}
+                        </Text>
                     <Text style={styles.userEmail}>
-                        Email@Example.com
+                        {user?.email || 'Email@Example.com'}
                     </Text>
                 </View>
 
@@ -143,7 +151,10 @@ export default function ProfileScreen({ navigation }) {
                             }
                             title="Log ud"
                             danger
-                            onPress={TESTPROFILEBUTTON4}
+                            onPress={async () => {
+                                await logout();
+                                navigation.replace('Login');
+                            }}
                         />
                     </View>
             </ScrollView>
