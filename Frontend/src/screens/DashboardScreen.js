@@ -11,10 +11,6 @@ import {
     Settings,
 } from 'lucide-react-native';
 import styles, { dashboardColors } from '../styles/dashboardStyles';
-import mockCompanies from '../data/mockCompanies';
-
-// Set to true to preview the empty state during development
-const SHOW_EMPTY_STATE = false;
 
 const getInitials = (name) =>
     name
@@ -26,7 +22,8 @@ const getInitials = (name) =>
 
 export default function DashboardScreen({ navigation }) {
 
-    const companies = SHOW_EMPTY_STATE ? [] : mockCompanies;
+    // TODO: load the user's companies from the backend
+    const companies = [];
     const hasCompanies = companies.length > 0;
 
     const totalItems = companies.reduce((sum, c) => sum + c.itemCount, 0);

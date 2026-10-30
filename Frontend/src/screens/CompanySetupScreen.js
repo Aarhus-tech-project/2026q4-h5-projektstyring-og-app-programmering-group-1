@@ -52,7 +52,9 @@ export default function CompanySetupScreen({ navigation }) {
         setIsSearching(true);
         try {
             const res = await http.get(`/v1/cvr=${cvrNumber}/userID=19f6548d-396e-4446-b907-753f0106b67e`);
-            console.log('Company data:', res.data);
+            if(res.data.success) {
+                setCompany(res.data.data || null);
+            }
         } catch (error) {
             Alert.alert(
                 'Virksomhed ikke fundet',
@@ -63,16 +65,33 @@ export default function CompanySetupScreen({ navigation }) {
         }
     }
 
-    function handleCreateCompany() {
+    async function handleCreateCompany() {
         if (!company) {
             return;
         }
-
-        console.log('Company data:', company);
-        Alert.alert(
-            'Virksomhed oprettet',
-            'Din virksomhed er blevet oprettet. PLACEHOLDER BACKEND NOT SETUP'
-        );
+        setIsSearching(true);
+        try{
+            const res = await http.post('/v1/company', {
+                company: company,
+            })
+            if(res.data.success){
+                Alert.alert(
+                    'Virksomhed oprettet',
+                    'Virksomheden er blevet oprettet og tilføjet til din profil.'
+                );
+                navigation.navigate('Home');
+            }
+        }
+        catch(error){
+            Alert.alert(
+                'Fejl ved oprettelse',
+                'Der opstod en fejl under oprettelsen af virksomheden.'
+            );
+        }
+        finally{
+            setIsSearching(false);
+        }
+    
     }
 
     return (
@@ -123,7 +142,7 @@ export default function CompanySetupScreen({ navigation }) {
                         <Text style={styles.fieldLabel}>Adresse</Text>
                         {company ? (
                             <>
-                                <Text style={styles.addressText}>{company.street}</Text>
+                                <Text style={styles.addressText}>{company.address}, {company.zipcode}</Text>
                                 <Text style={styles.addressText}>{company.city}</Text>
                             </>
                         ) : (

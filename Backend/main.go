@@ -72,6 +72,9 @@ func main() {
 			})
 		})
 		protected.GET("/cvr=:cvr/userID=:userID", routers.ResearchCVR)
+
+		// POST //
+		protected.POST("/company", routers.CreateCompany)
 	}
 
 	PORT := os.Getenv("PORT")
