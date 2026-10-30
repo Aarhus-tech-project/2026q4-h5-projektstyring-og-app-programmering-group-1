@@ -1,31 +1,22 @@
 import axios from 'axios';
-
-const SERVER_IP = 'http://172.31.0.151:8080/v1';
-
-let accessToken = null;
+import AsyncStorage from '@react-native-async-storage/async-storage';
+const SERVER_IP = "http://172.31.0.151:8080/v1"
 
 const http = axios.create({
-    baseURL: SERVER_IP,
+  baseURL: SERVER_IP,
 });
 
-export function setAccessToken(token) {
-    accessToken = token;
-}
+http.interceptors.request.use(async (config) => {
+  const token = await AsyncStorage.getItem('token');
+  if (token && token !== 'null' && token !== 'undefined') {
+    config.headers.Authorization = `Bearer ${token}`;
+  } else {
+    delete config.headers.Authorization;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
 
-export function clearAccessToken() {
-    accessToken = null;
-}
-
-http.interceptors.request.use(
-    (config) => {
-        if (accessToken) {
-            config.headers = config.headers || {};
-            config.headers.Authorization = `Bearer ${accessToken}`;
-        }
-
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
 
 export default http;

@@ -96,7 +96,7 @@ export default function ProfileScreen({ navigation }) {
                         <UserRound size={36} color="#FFFFFF"/>
                     </View>
 
-                    <Text sttyle={styles.userName}>
+                    <Text style={styles.userName}>
                         {user?.name || 'Bruger Navn'}
                         </Text>
                     <Text style={styles.userEmail}>
