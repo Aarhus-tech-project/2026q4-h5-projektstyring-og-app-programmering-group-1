@@ -19,7 +19,7 @@ export function getDaysUntilExpiry(item) {
         return null;
     }
 
-    const [year, month, day] = item.nextExpiryDate.split('-').map(number);
+    const [year, month, day] = item.nextExpiryDate.split('-').map(Number);
     const expiry = new Date(year, month - 1, day);
 
     const today = new Date();
@@ -58,21 +58,21 @@ const FILTER_CHECKS = {
 
 export function getInventoryCounts(items) {
     return {
-        [FILTERS.LOW]: items.filter(isLowStock).lenght,
+        [FILTERS.LOW]: items.filter(isLowStock).length,
         [FILTERS.OUT]: items.filter(isOutOfStock).length,
         [FILTERS.SHOPPING]: items.filter(needsPurchase).length,
         [FILTERS.EXPIRING]: items.filter(isExpiringSoon).length,
     };
 }
 
-export function getVisibleitems(items, filter, search) {
+export function getVisibleItems(items, filter, search) {
     const query = search.trim().toLowerCase();
 
     return items
         .filter(FILTER_CHECKS[filter])
         .filter((item) =>
             item.name.toLowerCase().includes(query) ||
-            item.category.toLowerCase().incudles(query)
+            item.category.toLowerCase().includes(query)
         )
         .sort((a, b) => a.name.localeCompare(b.name, 'da'));
 }

@@ -24,8 +24,8 @@ export default function InventoryItemRow({ item, isTablet, onChangeQuantity }) {
     return (
         <View style={[styles.itemRow, isTablet && styles.itemRowTablet]}>
             <View style={styles.itemHeader}>
-                <Text styles={styles.itemName} numberOfLines={2}>{item.name}</Text>
-                <View style={[styles.statusBdage, { backgroundColor: status.softColor }]}>
+                <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: status.softColor }]}>
                     <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
                 </View>
             </View>
@@ -36,7 +36,7 @@ export default function InventoryItemRow({ item, isTablet, onChangeQuantity }) {
                 <View style={styles.itemNotes}>
                     {needsPurchase(item) && (
                         <Text style={styles.purchaseText}>
-                            køb midnst {item.minQuantity - item.quantity} {item.unit}
+                            køb mindst {item.minQuantity - item.quantity} {item.unit}
                         </Text>
                     )}
                     {expiryText && <Text style={styles.expiryText}>{expiryText}</Text>}
@@ -49,12 +49,12 @@ export default function InventoryItemRow({ item, isTablet, onChangeQuantity }) {
                             !canDecrease && styles.stepperButtonDisabled,
                             pressed && styles.pressed,
                         ]}
-                        onPress={() => onCahngeQuantity(item, -1)}
+                        onPress={() => onChangeQuantity(item, -1)}
                         disabled={!canDecrease}
                         accessibilityRole="button"
-                        accessibilityLabel={'Fjern 1 ${item.unit} {item.name}'}
+                        accessibilityLabel={`Fjern 1 ${item.unit} ${item.name}`}
                         accessibilityState={{ disabled: !canDecrease }}>
-                        <Minus size={20} color={canDecrease ? inventoryColors.primary : inventoruColors.muted}/>
+                        <Minus size={20} color={canDecrease ? inventoryColors.primary : inventoryColors.muted}/>
                         </Pressable>
 
                         <Text style={styles.quantityText}>{item.quantity} {item.unit}</Text>

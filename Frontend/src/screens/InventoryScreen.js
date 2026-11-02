@@ -27,7 +27,7 @@ const LIST_TITLES = {
 };
 
 export default function InventoryScreen({ navigation, route }) {
-    const { companyId } = route.params;
+    const { companyId, companyName } = route.params;
 
     const { width } = useWindowDimensions();
     const isTablet = width >= TABLET_WIDTH;
@@ -67,7 +67,7 @@ export default function InventoryScreen({ navigation, route }) {
     }
 
     async function changeQuantity(item, change) {
-        const quantity = Math.max(0, items.quantity + change);
+        const quantity = Math.max(0, item.quantity + change);
 
         setItems((current) =>
             current.map((other) => (other.id === item.id ? { ...other, quantity } : other))
@@ -115,14 +115,14 @@ export default function InventoryScreen({ navigation, route }) {
                         onPress={() => setSearch('')}
                         accessibilityRole="button"
                         accessibilityLabel="Ryd søgning">
-                            <x size={20} color={inventoryColors.muted} />
+                            <X size={20} color={inventoryColors.muted} />
                         </Pressable>
 
                 )}
             </View>
 
             <View style={styles.listTitleRow}>
-                <Text styles={styles.listTitle}>
+                <Text style={styles.listTitle}>
                     {LIST_TITLES[activeFilter]} ({visibleItems.length})
                 </Text>
                 {activeFilter !== FILTERS.ALL && (
@@ -141,7 +141,7 @@ export default function InventoryScreen({ navigation, route }) {
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                     accessibilityRole="button"
-                    accessibilityLabel="Go tilbage">
+                    accessibilityLabel="Gå tilbage">
                         <ChevronLeft size={24} color={inventoryColors.text} />
                 </Pressable>
                 <View>
