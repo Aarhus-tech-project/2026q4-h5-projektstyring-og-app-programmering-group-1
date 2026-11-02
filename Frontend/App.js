@@ -36,6 +36,18 @@ export default function App() {
             />
 
             <Stack.Screen
+              name="Dashboard"
+              component={DashboardScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="Settings"
+              component={SettingsScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
               name="Login"
               component={LoginScreen}
               options={{ headerShown: false }}
@@ -62,18 +74,5 @@ export default function App() {
         </NavigationContainer>
       </SafeAreaProvider>
     </AuthProvider>
-            name="Dashboard"
-            component={DashboardScreen}
-            options={{ headerShown: false }}
-            />
-
-            <Stack.Screen
-            name="Settings"
-            component={SettingsScreen}
-            options={{ headerShown: false }}
-            />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
   );
 }

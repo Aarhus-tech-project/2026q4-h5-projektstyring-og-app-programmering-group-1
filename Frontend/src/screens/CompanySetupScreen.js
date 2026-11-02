@@ -13,6 +13,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, ArrowRight, Building2 } from 'lucide-react-native';
 import http from "../../http/http";
+import { useAuth } from '../AuthContext/AuthContext';
+import { useNavigation, CommonActions } from "@react-navigation/native";
+import LoadingModal from '../components/LoadingModal';
+
 
 import colors from '../constants/colors';
 import styles from '../styles/CompanySetupStyles';
@@ -29,8 +33,10 @@ function getInitials(name) {
 }
 
 
-export default function CompanySetupScreen({ navigation }) {
+export default function CompanySetupScreen() {
+    const navigation = useNavigation();
     const [cvrNumber, setCvrNumber] = useState('');
+    const { user, setCompanies } = useAuth();
     const [company, setCompany] = useState(null);
     const [isSearching, setIsSearching] = useState(false);
 
@@ -51,7 +57,7 @@ export default function CompanySetupScreen({ navigation }) {
 
         setIsSearching(true);
         try {
-            const res = await http.get(`/v1/cvr=${cvrNumber}/userID=19f6548d-396e-4446-b907-753f0106b67e`);
+            const res = await http.get(`/cvr=${cvrNumber}/userID=${user.id}`);
             if(res.data.success) {
                 setCompany(res.data.data || null);
             }
@@ -71,22 +77,38 @@ export default function CompanySetupScreen({ navigation }) {
         }
         setIsSearching(true);
         try{
-            const res = await http.post('/v1/company', {
-                company: company,
+            // The backend takes the owner from the auth token, so only the company is sent
+            const res = await http.post('/company', {
+                company: {
+                    cvr: company.cvr,
+                    name: company.name,
+                    address: company.address,
+                    zipcode: company.zipcode,
+                    city: company.city,
+                },
             })
             if(res.data.success){
-                Alert.alert(
-                    'Virksomhed oprettet',
-                    'Virksomheden er blevet oprettet og tilføjet til din profil.'
+                setCompanies(res.data.data);
+                navigation.dispatch(
+                    CommonActions.reset({
+                        index: 0,
+                        routes: [{ name: 'Dashboard' }],
+                    })
                 );
-                navigation.navigate('Home');
             }
         }
         catch(error){
-            Alert.alert(
-                'Fejl ved oprettelse',
-                'Der opstod en fejl under oprettelsen af virksomheden.'
-            );
+            if (error.response?.status === 409) {
+                Alert.alert(
+                    'Virksomhed findes allerede',
+                    'Der er allerede oprettet en virksomhed med dette CVR-nummer.'
+                );
+            } else {
+                Alert.alert(
+                    'Fejl ved oprettelse',
+                    'Der opstod en fejl under oprettelsen af virksomheden.'
+                );
+            }
         }
         finally{
             setIsSearching(false);
@@ -200,6 +222,9 @@ export default function CompanySetupScreen({ navigation }) {
                     </Pressable>
                 </ScrollView>
             </SafeAreaView>
+
+
+            <LoadingModal visible={isSearching}/>
         </KeyboardAvoidingView>
     );
 }

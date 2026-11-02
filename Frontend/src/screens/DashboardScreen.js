@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View, TouchableOpacity } from 'react-native';
 import {
     ChevronRight,
     Layers,
@@ -11,6 +12,12 @@ import {
     Settings,
 } from 'lucide-react-native';
 import styles, { dashboardColors } from '../styles/dashboardStyles';
+import { useAuth } from '../AuthContext/AuthContext';
+import http from "../../http/http";
+import { useNavigation } from "@react-navigation/native";
+
+import ConfirmationModal from '../components/ConfirmationModal';
+import LoadingModal from '../components/LoadingModal';
 
 const getInitials = (name) =>
     name
@@ -20,14 +27,18 @@ const getInitials = (name) =>
         .map((word) => word[0].toUpperCase())
         .join('');
 
-export default function DashboardScreen({ navigation }) {
+export default function DashboardScreen() {
 
-    // TODO: load the user's companies from the backend
-    const companies = [];
+    const { setCompanies, companies, user } = useAuth();
+    const [loading, setLoading] = useState(false);
+    const navigation = useNavigation();
     const hasCompanies = companies.length > 0;
+    const [modalVisible, setModalVisible] = useState(false);
+    const [selectedCompany, setSelectedCompany] = useState(null);
 
-    const totalItems = companies.reduce((sum, c) => sum + c.itemCount, 0);
-    const totalWarnings = companies.reduce((sum, c) => sum + c.expiringSoonCount + c.lowStockCount, 0);
+    // Inventory counts are not sent by the backend yet, so missing ones count as 0
+    const totalItems = companies.reduce((sum, c) => sum + (c.itemCount ?? 0), 0);
+    const totalWarnings = companies.reduce((sum, c) => sum + (c.expiringSoonCount ?? 0) + (c.lowStockCount ?? 0), 0);
 
     const openCompany = (company) => {
         // TODO: navigate to the company's inventory dashboard when it exists
@@ -36,12 +47,33 @@ export default function DashboardScreen({ navigation }) {
 
     const addCompany = () => navigation.navigate('CompanySignup');
 
+
+
+    const handleDeleteCompany = async () => {
+        if (!selectedCompany) return;
+        setLoading(true);
+        try {
+            const res = await http.delete(`/company/${selectedCompany.id}/userID=${user.id}`);
+            if(res.data.success) {
+                setCompanies(res.data.data);
+                setModalVisible(false);
+                setSelectedCompany(null);
+            }
+
+        } catch (error) {
+            console.error('Error deleting company:', error);
+        }
+        finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
             <View style={styles.topBar}>
-                <View style={styles.brandMark}>
-                    <Text style={styles.brandMarkText}>W</Text>
-                </View>
+                <TouchableOpacity style={styles.brandMark} onPress={() => navigation.navigate('ProfileScreen')}>
+                    <Text style={styles.brandMarkText}>{getInitials(user.name)}</Text>
+                </TouchableOpacity>
 
                 <View style={styles.header}>
                     <Text style={styles.title} numberOfLines={1}>Mine virksomheder</Text>
@@ -96,6 +128,8 @@ export default function DashboardScreen({ navigation }) {
                                     // An odd last card fills the whole row
                                     isFullWidth={companies.length % 2 === 1 && index === companies.length - 1}
                                     onPress={() => openCompany(company)}
+                                    onLongPress={() => setModalVisible(true)}
+                                    onSelect={() => setSelectedCompany(company)}
                                 />
                             ))}
                         </View>
@@ -119,17 +153,35 @@ export default function DashboardScreen({ navigation }) {
                     <AddCompanyButton onPress={addCompany} />
                 </View>
             )}
+            
+
+            <ConfirmationModal
+                visible={modalVisible}
+                variant="danger"
+                title="Slet virksomhed"
+                message="Er du sikker på, at du vil slette denne virksomhed? Denne handling kan ikke fortrydes."
+                confirmText="Slet"
+                cancelText="Annuller"
+                onConfirm={() => {
+                    handleDeleteCompany();
+                }}
+                onCancel={() => setModalVisible(false)}
+            />
+
+            <LoadingModal visible={loading} message="Sletter virksomhed..." />
         </SafeAreaView>
     );
 }
 
-function CompanyCard({ company, isFullWidth, onPress }) {
+function CompanyCard({ company, isFullWidth, onPress, onLongPress, onSelect }) {
     const hasWarnings = company.expiringSoonCount > 0 || company.lowStockCount > 0;
 
     return (
         <Pressable
             style={({ pressed }) => [styles.companyCard, isFullWidth && styles.companyCardFull, pressed && styles.pressed]}
-            onPress={onPress}>
+            onLongPress={onLongPress}
+            onPress={onPress}
+            onPressIn={onSelect}>
             <View style={styles.companyHeader}>
                 <View style={styles.initials}>
                     <Text style={styles.initialsText}>{getInitials(company.name)}</Text>
@@ -139,14 +191,14 @@ function CompanyCard({ company, isFullWidth, onPress }) {
 
             <View>
                 <Text style={styles.companyName} numberOfLines={1}>{company.name}</Text>
-                <Text style={styles.companyMeta} numberOfLines={1}>{company.city} · {company.role}</Text>
+                <Text style={styles.companyMeta} numberOfLines={1}>{company.role} • {company?.created_at ? new Date(company.created_at).toLocaleDateString() : ''}</Text>
             </View>
 
             <View style={[styles.chips, isFullWidth && styles.chipsRow]}>
                 <View style={styles.chip}>
                     <Package size={18} color={dashboardColors.black} />
                     <View>
-                        <Text style={styles.chipValue}>{company.itemCount}</Text>
+                        <Text style={styles.chipValue}>{company.itemCount ?? 0}</Text>
                         <Text style={styles.chipLabel}>varer</Text>
                     </View>
                 </View>

@@ -74,7 +74,10 @@ func main() {
 		protected.GET("/cvr=:cvr/userID=:userID", routers.ResearchCVR)
 
 		// POST //
-		protected.POST("/company", routers.CreateCompany)
+		protected.POST("/company", routers.HandleCreateCompany)
+
+		// DELETE //
+		protected.DELETE("/company/:companyID/userID=:userID", routers.HandleDeleteCompany)
 	}
 
 	PORT := os.Getenv("PORT")
