@@ -11,6 +11,7 @@
     "expo-dev-client": "~58.0.15",
     "expo-router": "~58.0.26",
     "expo-status-bar": "~58.0.4",
+    "lottie-react-native": "~7.5.0",
     "lucide-react": "^1.62.0",
     "lucide-react-native": "^1.62.0",
     "react": "19.3.0",
@@ -26,5 +27,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "react-native-dotenv": "^5.0.0"
+  }
 }

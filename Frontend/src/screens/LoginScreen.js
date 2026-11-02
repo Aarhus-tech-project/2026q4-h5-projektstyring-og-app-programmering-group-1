@@ -1,7 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View, Alert } from 'react-native';
 import { useState } from 'react'
-import { MoveLeft } from 'lucide-react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import { useAuth } from '../AuthContext/AuthContext';
 import styles from '../styles/loginStyles';
 
@@ -10,9 +10,9 @@ import styles from '../styles/loginStyles';
 
 export default function LoginScreen({ navigation }) {
 
-    const { login } = useAuth();
+    const { login, user } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
-    const [email, setEmail] = useState('');
+    const [email, setEmail] = useState(user?.email || '');
     const [password, setPassword] = useState('');
 
 
@@ -33,7 +33,7 @@ export default function LoginScreen({ navigation }) {
             console.log('Logged in user: ', loginData.user);
             console.log('User companies: ', loginData.companies);
 
-            navigation.replace('ProfileScreen');
+            navigation.replace('Dashboard');
         } catch (error) {
             console.error('Login failed: ' , error);
 
@@ -54,7 +54,7 @@ export default function LoginScreen({ navigation }) {
                 <SafeAreaView style={styles.safeArea}>
                     <View style={styles.loginCard}>
                         <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-                            <MoveLeft size={30} />
+                            <ChevronLeft size={30} />
                         </Pressable>
 
                         <Text style={styles.brand}>LAGERKLAR</Text>

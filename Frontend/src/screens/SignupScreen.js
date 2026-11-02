@@ -1,7 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAvoidingView, Platform, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useState } from 'react';
-import { MoveLeft } from 'lucide-react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import styles from '../styles/loginStyles';
 
 
@@ -116,7 +116,7 @@ export default function SignupScreen({ navigation }) {
                         <Pressable
                         style={styles.backButton}
                         onPress={() => navigation.goBack()}>
-                            <MoveLeft size={30} />
+                            <ChevronLeft size={30} />
                         </Pressable>
                         
                         <Text style={styles.brand}>LAGERKLAR</Text>

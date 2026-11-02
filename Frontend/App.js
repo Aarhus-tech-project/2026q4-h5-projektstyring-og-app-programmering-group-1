@@ -40,13 +40,13 @@ export default function App() {
               name="Dashboard"
               component={DashboardScreen}
               options={{ headerShown: false }}
-              />
+            />
 
-              <Stack.Screen
+            <Stack.Screen
               name="Settings"
               component={SettingsScreen}
               options={{ headerShown: false }}
-              />
+            />
 
             <Stack.Screen
               name="Login"
