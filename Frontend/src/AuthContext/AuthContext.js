@@ -15,6 +15,7 @@ export function AuthProvider({ children }) {
     useEffect(() => {
         async function loadStoredUser() {
             try {
+                const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
                 const storedUser = await AsyncStorage.getItem(USER_KEY);
 
                 if (storedToken && storedUser) {
@@ -62,8 +63,8 @@ export function AuthProvider({ children }) {
 
     async function logout() {
 
-        await AsyncStorage.removeItem('TOKEN_KEY');
-        await AsyncStorage.removeItem('USER_KEY');
+        await AsyncStorage.removeItem(TOKEN_KEY);
+        await AsyncStorage.removeItem(USER_KEY);
         
         setUser(null);
         setCompanies([]);
@@ -74,6 +75,7 @@ export function AuthProvider({ children }) {
             user,
             companies,
             isAuthenticated: Boolean(user),
+            setCompanies,
             login,
             logout,
         }),

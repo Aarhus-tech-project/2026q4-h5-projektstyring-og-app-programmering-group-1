@@ -27,11 +27,12 @@ type LoginRequest struct {
 }
 
 type CompanyAccess struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	CVR     string `json:"cvr"`
-	Address string `json:"address"`
-	Role    string `json:"role"`
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	CVR       string    `json:"cvr"`
+	Address   string    `json:"address"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func Login(c *gin.Context) {
@@ -84,7 +85,7 @@ func Login(c *gin.Context) {
 
 	rows, err := database.DB.QueryContext(
 		c.Request.Context(),
-		`SELECT c.id::text, c.name, COALESCE(c.cvr, ''), COALESCE(c.address, ''), cm.role
+		`SELECT c.id::text, c.name, COALESCE(c.cvr, ''), COALESCE(c.address, ''), cm.role, c.created_at
 		 FROM company_memberships cm
 		 JOIN companies c ON c.id = cm.company_id
 		 WHERE cm.user_id = $1::uuid
@@ -110,6 +111,7 @@ func Login(c *gin.Context) {
 			&company.CVR,
 			&company.Address,
 			&company.Role,
+			&company.CreatedAt,
 		); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success": false,

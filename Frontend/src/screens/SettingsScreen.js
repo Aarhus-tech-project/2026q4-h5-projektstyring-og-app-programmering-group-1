@@ -1,6 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { CommonActions } from "@react-navigation/native";
 import styles from '../styles/settingsStyles';
 
 const comingSoon = () => Alert.alert('Kommer snart', 'Denne funktion er ikke klar endnu.');
@@ -16,7 +17,12 @@ export default function SettingsScreen({ navigation }) {
     };
 
     const logout = () => {
-        navigation.navigate('Home');
+        navigation.dispatch(
+            CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+            })
+        );
     };
 
     return (
