@@ -12,6 +12,7 @@ import CompanySetupScreen from './src/screens/CompanySetupScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import InventoryScreen from './src/screens/InventoryScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -36,6 +37,18 @@ export default function App() {
             />
 
             <Stack.Screen
+              name="Dashboard"
+              component={DashboardScreen}
+              options={{ headerShown: false }}
+              />
+
+              <Stack.Screen
+              name="Settings"
+              component={SettingsScreen}
+              options={{ headerShown: false }}
+              />
+
+            <Stack.Screen
               name="Login"
               component={LoginScreen}
               options={{ headerShown: false }}
@@ -58,22 +71,16 @@ export default function App() {
               component={ProfileScreen}
               options={{ headerShown: false }}
               />
+
+              <Stack.Screen
+              name="Inventory"
+              component={InventoryScreen}
+              options={{ headerShown: false }}
+            />
+
           </Stack.Navigator>
         </NavigationContainer>
       </SafeAreaProvider>
     </AuthProvider>
-            name="Dashboard"
-            component={DashboardScreen}
-            options={{ headerShown: false }}
-            />
-
-            <Stack.Screen
-            name="Settings"
-            component={SettingsScreen}
-            options={{ headerShown: false }}
-            />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
   );
 }
