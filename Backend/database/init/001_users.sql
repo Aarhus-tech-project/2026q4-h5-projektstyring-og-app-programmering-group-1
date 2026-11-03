@@ -7,5 +7,6 @@ CREATE TABLE users (
     phone_number  TEXT,
     avatar_url    TEXT,
     is_active     BOOLEAN     NOT NULL DEFAULT TRUE,
+    avatar_url    TEXT,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );

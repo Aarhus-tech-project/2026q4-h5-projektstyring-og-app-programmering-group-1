@@ -42,11 +42,10 @@ export default function HomeScreen({ navigation }) {
 
 
                 <View style={styles.buttonContainer}>
-                    <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('ProfileScreen')}>
-                            <Text style={styles.secondaryButtonText}>TEST BUTTON</Text>
-                    </Pressable>
-                    <Pressable style={styles.secondaryButton}>
-                            <Text style={styles.secondaryButtonText}>indstillinger</Text>
+                    <Pressable
+                        style={styles.secondaryButton}
+                        onPress={() => navigation.navigate('Inventory', { companyId: 'company-1', companyName: 'Nordic Bistro' })}>
+                            <Text style={styles.secondaryButtonText}>TEST LAGER</Text>
                     </Pressable>
                 </View>
             </SafeAreaView>
