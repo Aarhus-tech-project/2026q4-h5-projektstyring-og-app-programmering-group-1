@@ -1,6 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ActivityIndicator, Alert, FlatList, Pressable, Text, TextInput, useWindowDimensions, View } from 'react-native';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { CalendarClock, ChevronLeft, PackageX, Search, ShoppingCart, TrendingDown, X } from 'lucide-react-native';
 import InventoryItemRow from '../components/inventory/InventoryItemRow';
 import InventorySummaryCard from '../components/inventory/InventorySummaryCard';
@@ -10,6 +10,7 @@ import { FILTERS, getInventoryCounts, getVisibleItems } from '../utils/inventory
 
 
 const TABLET_WIDTH = 768;
+const PIN_DURATION = 5000;
 
 const SUMMARY_CARDS = [
     { filter: FILTERS.LOW, label: 'Lav beholdning', icon: TrendingDown, color: inventoryColors.warning, softColor: inventoryColors.warningSoft },
@@ -37,6 +38,8 @@ export default function InventoryScreen({ navigation, route }) {
     const [hasError, setHasError] = useState(false);
     const [activeFilter, setActiveFilter] = useState(FILTERS.ALL);
     const [search, setSearch] = useState('');
+    const [pinnedIds, setPinnedIds] = useState([]);
+    const pinTimers = useRef({});
 
     const loadItems = useCallback(async () => {
         setIsLoading(true);
@@ -45,7 +48,7 @@ export default function InventoryScreen({ navigation, route }) {
         try {
             setItems(await getInventoryItems(companyId));
         } catch (error) {
-            consolse.error('Could not load inventory: ', error);
+            console.error('Could not load inventory: ', error);
             setHasError(true);
         } finally {
             setIsLoading(false);
@@ -56,17 +59,39 @@ export default function InventoryScreen({ navigation, route }) {
         loadItems();
     }, [loadItems]);
 
+    useEffect(() => {
+        return () => {
+            Object.values(pinTimers.current).forEach((timer) => clearTimeout(timer));
+            pinTimers.current = {};
+            setPinnedIds([]);
+        };
+    }, [activeFilter]);
+
     const counts = useMemo(() => getInventoryCounts(items), [items]);
+
     const visibleItems = useMemo(
-        () => getVisibleItems(items, activeFilter, search),
-        [items, activeFilter, search]
+        () => getVisibleItems(items, activeFilter, search, pinnedIds),
+        [items, activeFilter, search, pinnedIds]
     );
 
     function toggleFilter(filter) {
         setActiveFilter(activeFilter === filter ? FILTERS.ALL : filter);
     }
 
+    function pinItem(itemId) {
+        clearTimeout(pinTimers.current[itemId]);
+
+        pinTimers.current[itemId] = setTimeout(() => {
+            delete pinTimers.current[itemId];
+            setPinnedIds((current) => current.filter((id) => id !== itemId));
+        }, PIN_DURATION);
+
+        setPinnedIds((current) => (current.includes(itemId) ? current : [...current, itemId]));
+    }
+
     async function changeQuantity(item, change) {
+        pinItem(item.id);
+
         const quantity = Math.max(0, item.quantity + change);
 
         setItems((current) =>

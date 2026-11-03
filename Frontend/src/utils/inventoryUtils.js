@@ -65,11 +65,13 @@ export function getInventoryCounts(items) {
     };
 }
 
-export function getVisibleItems(items, filter, search) {
+export function getVisibleItems(items, filter, search, pinnedIds = []) {
     const query = search.trim().toLowerCase();
 
+    const isPinned = (item) =>pinnedIds.includes(item.id) && needsPurchase(item);
+
     return items
-        .filter(FILTER_CHECKS[filter])
+        .filter((item) => FILTER_CHECKS[filter](item) || isPinned(item))
         .filter((item) =>
             item.name.toLowerCase().includes(query) ||
             item.category.toLowerCase().includes(query)
