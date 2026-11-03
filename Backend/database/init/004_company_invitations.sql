@@ -2,12 +2,13 @@ CREATE TABLE company_invitations (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     email      TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
     role       TEXT NOT NULL CHECK (role IN ('leder', 'medarbejder')),
     invited_by UUID NOT NULL REFERENCES users(id),
     status     TEXT NOT NULL DEFAULT 'pending'
                CHECK (status IN ('pending', 'accepted', 'cancelled')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    expires_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ NOT NULL,
     accepted_at TIMESTAMPTZ
 );
 
