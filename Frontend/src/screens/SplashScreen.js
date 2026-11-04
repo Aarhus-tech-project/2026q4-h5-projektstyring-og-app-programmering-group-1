@@ -5,6 +5,7 @@ import { PackageCheck } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from '../styles/splashStyles';
 import { ONBOARDING_KEY } from './OnboardingScreen';
+const MODE = process.env.EXPO_PUBLIC_MODE || 'development';
 
 const SPLASH_DURATION = 2000;
 
@@ -15,6 +16,7 @@ export default function SplashScreen({ navigation }) {
             let hasSeenOnboarding = null;
             try {
                 hasSeenOnboarding = await AsyncStorage.getItem(ONBOARDING_KEY);
+                hasSeenOnboarding = MODE === 'development' ? false : hasSeenOnboarding === 'true';
             } catch (error) {
                 console.error('Could not load onboarding state;', error);
             }

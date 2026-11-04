@@ -41,8 +41,9 @@ export default function DashboardScreen() {
     const totalWarnings = companies.reduce((sum, c) => sum + (c.expiringSoonCount ?? 0) + (c.lowStockCount ?? 0), 0);
 
     const openCompany = (company) => {
-        // TODO: navigate to the company's inventory dashboard when it exists
-        Alert.alert(company.name, 'Lageroversigten kommer snart.');
+        if (!company) return;
+        setSelectedCompany(company);
+        navigation.navigate('Inventory', { companyId: company.id, companyName: company.name });
     };
 
     const addCompany = () => navigation.navigate('CompanySignup');

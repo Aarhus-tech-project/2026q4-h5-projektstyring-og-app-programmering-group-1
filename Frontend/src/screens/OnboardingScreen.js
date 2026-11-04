@@ -40,7 +40,7 @@ export default function OnboardingScreen({ navigation }) {
 
     async function finishOnboarding() {
         try {
-            await AsyncStorage.setItem(ONBOARDING_KEY, 'false');
+            await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
         } catch (error) {
             console.error('Could not save onboarding state;', error);
         }
