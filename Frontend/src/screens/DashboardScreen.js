@@ -42,7 +42,7 @@ export default function DashboardScreen() {
 
     const openCompany = (company) => {
         // TODO: navigate to the company's inventory dashboard when it exists
-        Alert.alert(company.name, 'Lageroversigten kommer snart.');
+        navigation.navigate('Inventory', { companyId: company.id, companyName: company.name });
     };
 
     const addCompany = () => navigation.navigate('CompanySignup');

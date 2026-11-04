@@ -2,6 +2,12 @@ package model
 
 import "time"
 
+const (
+	RoleEjer        = "ejer"
+	RoleLeder       = "leder"
+	RoleMedarbejder = "medarbejder"
+)
+
 type Company struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`

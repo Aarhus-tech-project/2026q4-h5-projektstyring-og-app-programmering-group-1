@@ -101,45 +101,6 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	_, err = tx.ExecContext(
-		c.Request.Context(),
-		`INSERT INTO company_memberships (company_id, user_id, role)
-		 SELECT company_id, $1, role
-		 FROM company_invitations
-		 WHERE lower(email) = $2
-		   AND status = 'pending'
-		   AND (expires_at IS NULL OR expires_at > now())
-		 ON CONFLICT (company_id, user_id) DO NOTHING`,
-		userID,
-		email,
-	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "Could not link account to invited companies",
-			"data":    gin.H{},
-		})
-		return
-	}
-
-	_, err = tx.ExecContext(
-		c.Request.Context(),
-		`UPDATE company_invitations
-		 SET status = 'accepted', accepted_at = now()
-		 WHERE lower(email) = $1
-		   AND status = 'pending'
-		   AND (expires_at IS NULL OR expires_at > now())`,
-		email,
-	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "Could not complete account registration",
-			"data":    gin.H{},
-		})
-		return
-	}
-
 	if err := tx.Commit(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

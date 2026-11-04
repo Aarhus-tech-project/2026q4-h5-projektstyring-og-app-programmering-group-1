@@ -99,7 +99,7 @@ export default function InventoryScreen({ navigation, route }) {
         );
 
         try {
-            await updateItemQuantity(item.id, quantity);
+            await updateItemQuantity(companyId, item.id, quantity);
         } catch (error) {
             console.error('Could not update item quantity: ', error);
             loadItems();

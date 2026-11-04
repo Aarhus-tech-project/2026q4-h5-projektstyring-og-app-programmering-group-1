@@ -56,7 +56,7 @@ export default function SignupScreen({ navigation }) {
 
 
         try {
-            const response = await fetch('http://172.31.0.151:8080/v1/register', { // REPLACE THIS WHEN SERVER IS UP AND RUNNING
+            const response = await fetch(`${process.env.EXPO_PUBLIC_SERVER_IP}/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

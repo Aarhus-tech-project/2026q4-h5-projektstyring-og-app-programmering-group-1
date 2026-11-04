@@ -1,13 +1,26 @@
 import mockInventory from '../data/mockInventory';
 
-let items = mockInventory;
+// Every company gets its own copy of the demo items until the backend has inventory endpoints
+const itemsByCompany = {};
 
-export async function getInventoryItems(companyId) {
-    // sim of api change to real API later
-    return items.filter((item) => item.companyId === companyId);
+function getCompanyItems(companyId) {
+    if (!itemsByCompany[companyId]) {
+        itemsByCompany[companyId] = mockInventory.map((item) => ({
+            ...item,
+            id: `${companyId}-${item.id}`,
+            companyId,
+        }));
+    }
+
+    return itemsByCompany[companyId];
 }
 
-export async function updateItemQuantity(itemId, quantity) {
-    //SIM FOR API CHANGE TO REAL API LATER
-    items = items.map((item) => (item.id === itemId ? { ...item, quantity } : item));
+export async function getInventoryItems(companyId) {
+    return getCompanyItems(companyId);
+}
+
+export async function updateItemQuantity(companyId, itemId, quantity) {
+    itemsByCompany[companyId] = getCompanyItems(companyId).map((item) =>
+        item.id === itemId ? { ...item, quantity } : item
+    );
 }
