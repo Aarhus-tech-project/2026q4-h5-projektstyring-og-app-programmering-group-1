@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Platform, Alert, Pressable, ScrollView, Text, Tex
 import { useState } from 'react';
 import { ChevronLeft } from 'lucide-react-native';
 import styles from '../styles/loginStyles';
+import http from '../../http/http';
 
 
 export default function SignupScreen({ navigation }) {
@@ -56,21 +57,13 @@ export default function SignupScreen({ navigation }) {
 
 
         try {
-            const response = await fetch('http://172.31.0.151:8080/v1/register', { // REPLACE THIS WHEN SERVER IS UP AND RUNNING
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    name: `${trimmedFirstName} ${trimmedLastName}`,
-                    email: trimmedEmail,
-                    password,
-                }),
-            });
+            const response = await http.post("/register",{
+                name: `${trimmedFirstName} ${trimmedLastName}`,
+                email: trimmedEmail,
+                password,
+            })
 
-            const result = await response.json();
-
-            if (!response.ok) {
+            if (!response.data.success) {
                 Alert.alert(
                     'Kunne ikke oprette konto',
                     result.message || 'Der optod en fejl ved oprettelse of kontoen.'
@@ -90,11 +83,6 @@ export default function SignupScreen({ navigation }) {
         );
     } catch (error) {
         console.error('Registration request failed:', error);
-
-        Alert.alert(
-            'Forbindelsesfejl',
-            'Kunne ikke få forbindelse til serveren. Tjek din internetforbindelse og prøv igen.'
-        );
     } finally {
         setIsLoading(false);
     }
