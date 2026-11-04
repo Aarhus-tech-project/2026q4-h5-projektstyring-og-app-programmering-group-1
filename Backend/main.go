@@ -45,6 +45,12 @@ func main() {
 		c.File("templates/index.html")
 	})
 
+	test := server.Group("/v1/")
+	test.Use()
+	{
+		test.GET("/notification-test/user/:userID", routers.NotificationTest)
+	}
+
 	public := server.Group("/v1/")
 	public.Use()
 	{
@@ -75,6 +81,7 @@ func main() {
 
 		// POST //
 		protected.POST("/company", routers.HandleCreateCompany)
+		protected.POST("/expo-push-token", routers.HandleSavePushToken)
 
 		// DELETE //
 		protected.DELETE("/company/:companyID/userID=:userID", routers.HandleDeleteCompany)
