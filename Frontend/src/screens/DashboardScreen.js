@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, Pressable, ScrollView, Text, View, TouchableOpacity } from 'react-native';
+import { Pressable, ScrollView, Text, View, TouchableOpacity } from 'react-native';
 import {
     ChevronRight,
     Layers,
@@ -15,6 +15,7 @@ import styles, { dashboardColors } from '../styles/dashboardStyles';
 import { useAuth } from '../AuthContext/AuthContext';
 import http from "../../http/http";
 import { useNavigation } from "@react-navigation/native";
+import { SaveExpoToken, getNotificationPermission } from "../utils/notificationUtils";
 
 import ConfirmationModal from '../components/ConfirmationModal';
 import LoadingModal from '../components/LoadingModal';
@@ -36,9 +37,27 @@ export default function DashboardScreen() {
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedCompany, setSelectedCompany] = useState(null);
 
+    const [askNotifications, setAskNotifications] = useState(false);
+
     // Inventory counts are not sent by the backend yet, so missing ones count as 0
     const totalItems = companies.reduce((sum, c) => sum + (c.itemCount ?? 0), 0);
     const totalWarnings = companies.reduce((sum, c) => sum + (c.expiringSoonCount ?? 0) + (c.lowStockCount ?? 0), 0);
+
+
+    useEffect(() => {
+        (async () => {
+            const permission = await getNotificationPermission();
+            if (permission === "granted") return SaveExpoToken(user?.id);
+            if (permission === "undetermined") setAskNotifications(true);
+        })();
+    }, [user?.id]);
+
+
+    const enableNotifications = useCallback(() => {
+        setAskNotifications(false);
+        SaveExpoToken(user?.id, { force: true });
+    }, [user?.id]);
+
 
     const openCompany = (company) => {
         if (!company) return;
@@ -167,6 +186,16 @@ export default function DashboardScreen() {
                     handleDeleteCompany();
                 }}
                 onCancel={() => setModalVisible(false)}
+            />
+
+            <ConfirmationModal
+                visible={askNotifications}
+                title="Slå notifikationer til"
+                message="Vil du have besked, når varer udløber snart eller har lav beholdning?"
+                confirmText="Tillad"
+                cancelText="Ikke nu"
+                onConfirm={enableNotifications}
+                onCancel={() => setAskNotifications(false)}
             />
 
             <LoadingModal visible={loading} message="Sletter virksomhed..." />
