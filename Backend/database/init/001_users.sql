@@ -1,4 +1,4 @@
--- User accounts. The password column stores a bcrypt hash, never a plain-text password.
+﻿-- User accounts. The password column stores a bcrypt hash, never a plain-text password.
 CREATE TABLE users (
     id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     name          TEXT        NOT NULL,
@@ -7,6 +7,5 @@ CREATE TABLE users (
     phone_number  TEXT,
     avatar_url    TEXT,
     is_active     BOOLEAN     NOT NULL DEFAULT TRUE,
-    avatar_url    TEXT,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );

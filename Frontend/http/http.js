@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { resetTo } from '../src/navigation/navigationRef';
 const SERVER_IP = process.env.EXPO_PUBLIC_SERVER_IP;
 
 const http = axios.create({
