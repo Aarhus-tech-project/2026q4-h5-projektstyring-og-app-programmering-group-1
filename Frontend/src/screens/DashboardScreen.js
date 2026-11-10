@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Pressable, ScrollView, Text, View, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import {
     ChevronRight,
     Layers,
@@ -30,7 +31,10 @@ const getInitials = (name) =>
 
 export default function DashboardScreen() {
 
-    const { setCompanies, companies, user } = useAuth();
+    const { setCompanies, companies, user, avatarSource } = useAuth();
+    // Gemmer den uri der fejlede, så et nyt billede (ny uri) prøves igen automatisk
+    const [failedAvatarUri, setFailedAvatarUri] = useState(null);
+    const showAvatarImage = avatarSource && avatarSource.uri !== failedAvatarUri;
     const [loading, setLoading] = useState(false);
     const navigation = useNavigation();
     const hasCompanies = companies.length > 0;
@@ -92,7 +96,18 @@ export default function DashboardScreen() {
         <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
             <View style={styles.topBar}>
                 <TouchableOpacity style={styles.brandMark} onPress={() => navigation.navigate('ProfileScreen')}>
-                    <Text style={styles.brandMarkText}>{getInitials(user.name)}</Text>
+                    {showAvatarImage ? (
+                        <Image
+                            key={avatarSource.uri}
+                            source={avatarSource}
+                            style={styles.brandMarkImage}
+                            contentFit="cover"
+                            cachePolicy="memory"
+                            onError={() => setFailedAvatarUri(avatarSource.uri)}
+                        />
+                    ) : (
+                        <Text style={styles.brandMarkText}>{getInitials(user?.name || '')}</Text>
+                    )}
                 </TouchableOpacity>
 
                 <View style={styles.header}>
