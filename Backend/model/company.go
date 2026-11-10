@@ -23,3 +23,22 @@ type CompanyMembership struct {
 	Role      string    `json:"role"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+type CompanyInvitation struct {
+	ID        string    `json:"id"`
+	CompanyID string    `json:"company_id"`
+	Email     string    `json:"email"`
+	Role      string    `json:"role"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+type ReceivedInvitation struct {
+	ID            string    `json:"id"`
+	CompanyID     string    `json:"company_id"`
+	CompanyName   string    `json:"company_name"`
+	Role          string    `json:"role"`
+	InvitedByName string    `json:"invited_by_name"`
+	ExpiresAt     time.Time `json:"expires_at"`
+}

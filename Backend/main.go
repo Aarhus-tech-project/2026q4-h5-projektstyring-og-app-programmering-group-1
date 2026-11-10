@@ -13,6 +13,8 @@ import (
 
 	"lagerklar/backend/database"
 	"lagerklar/backend/middleware"
+	"lagerklar/backend/model"
+
 	"lagerklar/backend/routers"
 )
 
@@ -72,12 +74,17 @@ func main() {
 			})
 		})
 		protected.GET("/cvr=:cvr/userID=:userID", routers.ResearchCVR)
+		protected.GET("/invitations", routers.HandleListMyInvitations)
 
 		// POST //
 		protected.POST("/company", routers.HandleCreateCompany)
 
 		// DELETE //
 		protected.DELETE("/company/:companyID/userID=:userID", routers.HandleDeleteCompany)
+
+		protected.POST("/company/:companyID/invitations", middleware.RequireCompanyRole(model.RoleEjer, model.RoleLeder), routers.HandleCreateInvitation)
+		protected.POST("/invitations/:invitationID/accept", routers.HandleAcceptInvitation)
+
 	}
 
 	PORT := os.Getenv("PORT")

@@ -7,7 +7,6 @@ import styles from '../styles/loginStyles';
 
 
 
-
 export default function LoginScreen({ navigation }) {
 
     const { login, user } = useAuth();
@@ -39,7 +38,7 @@ export default function LoginScreen({ navigation }) {
 
             Alert.alert(
                 'Kunne ikke logge ind',
-                error.message || 'Der optod en fejl under login'
+                error.message || 'Der optod en fejl under login',      
             );
         } finally {
             setIsLoading(false);
