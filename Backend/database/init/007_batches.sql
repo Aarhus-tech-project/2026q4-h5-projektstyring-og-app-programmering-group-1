@@ -1,9 +1,9 @@
--- Varepartier. Hvert parti har sin egen QR-kode, mængde og udløbsdato.
+﻿-- Varepartier med mængde og udløbsdato. QR-kode er valgfri.
 CREATE TABLE batches (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     item_id             UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
     created_by          UUID NOT NULL REFERENCES users(id),
-    qr_code             TEXT NOT NULL UNIQUE,
+    qr_code TEXT UNIQUE,
     initial_quantity    NUMERIC(12, 3) NOT NULL CHECK (initial_quantity > 0),
     remaining_quantity  NUMERIC(12, 3) NOT NULL
                     CHECK (remaining_quantity >= 0 AND remaining_quantity <= initial_quantity),

@@ -34,6 +34,8 @@ func main() {
 	server.Use(cors.New(cors.Config{
 		AllowOrigins: []string{
 			"http://localhost:5173",
+			"http://localhost:8081",
+			"http://localhost:8082",
 		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
@@ -65,6 +67,18 @@ func main() {
 	}
 	protected := server.Group("/v1")
 	protected.Use(middleware.RequireAuth())
+	protected.GET("/companies/:companyID/categories", routers.GetInventoryCategories)
+	protected.POST("/companies/:companyID/categories", routers.CreateInventoryCategory)
+	protected.GET("/companies/:companyID/items", routers.GetInventoryItems)
+	protected.POST("/companies/:companyID/items", routers.CreateInventoryItem)
+	protected.PATCH("/companies/:companyID/items/:itemID", routers.UpdateInventoryItem)
+	protected.DELETE("/companies/:companyID/items/:itemID", routers.DeleteInventoryItem)
+	protected.POST("/companies/:companyID/items/:itemID/batches", routers.ReceiveInventoryBatch)
+	protected.PATCH("/companies/:companyID/items/:itemID/stock", routers.AdjustInventoryStock)
+	protected.GET("/companies/:companyID/shopping-list", routers.GetShoppingList)
+	protected.POST("/companies/:companyID/shopping-list/items", routers.AddShoppingListItem)
+	protected.PATCH("/companies/:companyID/shopping-list/items/:lineID", routers.UpdateShoppingListItem)
+	protected.DELETE("/companies/:companyID/shopping-list/items/:lineID", routers.DeleteShoppingListItem)
 	{
 		// GET //
 		protected.GET("/me", func(c *gin.Context) {
