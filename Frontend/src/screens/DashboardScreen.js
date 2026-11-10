@@ -10,7 +10,7 @@ import {
     Store,
     TrendingDown,
     TriangleAlert,
-    Settings,
+    Bell,
 } from 'lucide-react-native';
 import styles, { dashboardColors } from '../styles/dashboardStyles';
 import { useAuth } from '../AuthContext/AuthContext';
@@ -95,7 +95,9 @@ export default function DashboardScreen() {
     return (
         <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
             <View style={styles.topBar}>
-                <TouchableOpacity style={styles.brandMark} onPress={() => navigation.navigate('ProfileScreen')}>
+                <TouchableOpacity style={styles.brandMark} onPress={() => navigation.navigate('Settings')}
+                    accessibilityRole="button"
+                    accessibilityLabel="Indstillinger">
                     {showAvatarImage ? (
                         <Image
                             key={avatarSource.uri}
@@ -115,8 +117,12 @@ export default function DashboardScreen() {
                     <Text style={styles.subtitle} numberOfLines={1}>Vælg en virksomhed for at se dit lager</Text>
                 </View>
 
-                <Pressable style={styles.avatar} onPress={() => navigation.navigate('Settings')}>
-                    <Settings size={22} color={dashboardColors.text} />
+                <Pressable
+                    style={styles.avatar}
+                    onPress={() => navigation.navigate('Notifications')}
+                    accessibilityRole="button"
+                    accessibilityLabel="Notifikationer">
+                    <Bell size={22} color={dashboardColors.text} />
                 </Pressable>
             </View>
 

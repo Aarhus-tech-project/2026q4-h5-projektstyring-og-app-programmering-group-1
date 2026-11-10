@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"lagerklar/backend/database"
 	"lagerklar/backend/middleware"
 	"lagerklar/backend/routers"
+	"lagerklar/backend/utils"
 )
 
 func main() {
@@ -27,6 +29,9 @@ func main() {
 	}
 	defer database.Close()
 	log.Println("Connected to PostgreSQL")
+
+	// Creates expiry and low stock notifications in the background
+	go utils.StartNotificationChecker(context.Background())
 
 	server := gin.Default()
 	server.SetTrustedProxies(nil)
@@ -93,10 +98,14 @@ func main() {
 		})
 		protected.GET("/cvr=:cvr/userID=:userID", routers.ResearchCVR)
 		protected.GET("/user/:userID/avatar", routers.HandleGetAvatar)
+		protected.GET("/notifications", routers.HandleGetNotifications)
 
 		// PUT //
 		protected.PUT("/user/:userID", routers.HandleUpdateProfile)
 		protected.PUT("/user/:userID/avatar", routers.HandleUploadAvatar)
+
+		// PATCH //
+		protected.PATCH("/notifications/:notificationID/read", routers.HandleMarkNotificationRead)
 
 		// POST //
 		protected.POST("/company", routers.HandleCreateCompany)
@@ -105,6 +114,7 @@ func main() {
 		// DELETE //
 		protected.DELETE("/company/:companyID/userID=:userID", routers.HandleDeleteCompany)
 		protected.DELETE("/user/:userID", routers.HandleDeleteAccount)
+		protected.DELETE("/notifications/:notificationID", routers.HandleDeleteNotification)
 	}
 
 	PORT := os.Getenv("PORT")

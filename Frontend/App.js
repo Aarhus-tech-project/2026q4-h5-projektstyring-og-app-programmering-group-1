@@ -16,6 +16,7 @@ import DashboardScreen from './src/screens/DashboardScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import InventoryScreen from './src/screens/InventoryScreen';
 import ShoppingListScreen from './src/screens/ShoppingListScreen';
+import NotificationsScreen from './src/screens/NotificationsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -91,6 +92,12 @@ export default function App() {
             <Stack.Screen
               name="ShoppingList"
               component={ShoppingListScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="Notifications"
+              component={NotificationsScreen}
               options={{ headerShown: false }}
             />
           </Stack.Navigator>

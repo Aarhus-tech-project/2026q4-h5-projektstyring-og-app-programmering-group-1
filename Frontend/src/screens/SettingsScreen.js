@@ -36,9 +36,9 @@ export default function SettingsScreen({ navigation }) {
 
             <ScrollView contentContainerStyle={styles.content}>
                 <SettingsGroup title="Profil">
-                    <SettingsRow label="Din profil" onPress={comingSoon} />
+                    <SettingsRow label="Din profil" onPress={() => navigation.navigate('ProfileScreen')} />
                     <SettingsRow label="Virksomheder" onPress={comingSoon} />
-                    <SettingsRow label="Notifikationer & påmindelser" onPress={comingSoon} isLast />
+                    <SettingsRow label="Notifikationer & påmindelser" onPress={() => navigation.navigate('Notifications')} isLast />
                 </SettingsGroup>
 
                 <SettingsGroup title="Privatliv & sikkerhed">
