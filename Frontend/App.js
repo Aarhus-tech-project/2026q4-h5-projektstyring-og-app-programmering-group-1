@@ -2,7 +2,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './src/navigation/navigationRef';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-
+import { StatusBar } from 'react-native';
 import { AuthProvider } from './src/AuthContext/AuthContext';
 
 import SplashScreen from './src/screens/SplashScreen';
@@ -22,6 +22,7 @@ const Stack = createNativeStackNavigator();
 export default function App() {
   return (
     <AuthProvider>
+      <StatusBar barStyle="dark-content" />
       <SafeAreaProvider>
         <NavigationContainer ref={navigationRef}>
           <Stack.Navigator

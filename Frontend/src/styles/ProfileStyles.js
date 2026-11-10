@@ -45,6 +45,24 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         backgroundColor: colors.primary,
         marginBottom: 12,
+        overflow: 'hidden',
+    },
+
+    avatarPressed: {
+        opacity: 0.85,
+    },
+
+    avatarImage: {
+        ...StyleSheet.absoluteFillObject,
+        width: '100%',
+        height: '100%',
+    },
+
+    avatarOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(17, 24, 39, 0.35)',
     },
 
     userName: {

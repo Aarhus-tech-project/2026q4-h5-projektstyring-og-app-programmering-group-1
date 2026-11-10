@@ -92,6 +92,11 @@ func main() {
 			})
 		})
 		protected.GET("/cvr=:cvr/userID=:userID", routers.ResearchCVR)
+		protected.GET("/user/:userID/avatar", routers.HandleGetAvatar)
+
+		// PUT //
+		protected.PUT("/user/:userID", routers.HandleUpdateProfile)
+		protected.PUT("/user/:userID/avatar", routers.HandleUploadAvatar)
 
 		// POST //
 		protected.POST("/company", routers.HandleCreateCompany)
@@ -99,6 +104,7 @@ func main() {
 
 		// DELETE //
 		protected.DELETE("/company/:companyID/userID=:userID", routers.HandleDeleteCompany)
+		protected.DELETE("/user/:userID", routers.HandleDeleteAccount)
 	}
 
 	PORT := os.Getenv("PORT")

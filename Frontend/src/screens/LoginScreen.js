@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View, Alert
 import { useState } from 'react'
 import { ChevronLeft } from 'lucide-react-native';
 import { useAuth } from '../AuthContext/AuthContext';
+import { getErrorMessage } from '../../http/http';
 import styles from '../styles/loginStyles';
 
 
@@ -35,11 +36,16 @@ export default function LoginScreen({ navigation }) {
 
             navigation.replace('Dashboard');
         } catch (error) {
-            console.error('Login failed: ' , error);
+            // console.log i stedet for console.error, så der ikke vises en rød fejl-overlay i appen
+            console.log('Login failed:', error?.response?.status ?? error?.message);
 
             Alert.alert(
                 'Kunne ikke logge ind',
-                error.message || 'Der optod en fejl under login'
+                getErrorMessage(error, {
+                    400: 'Indtast en gyldig email og password.',
+                    401: 'Forkert email eller password.',
+                    fallback: 'Der opstod en fejl under login. Prøv igen.',
+                })
             );
         } finally {
             setIsLoading(false);
