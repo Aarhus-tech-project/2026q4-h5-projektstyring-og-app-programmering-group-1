@@ -1,4 +1,4 @@
-import { SafeAreaView } from 'react-native-safe-area-context';
+﻿import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAvoidingView, Platform, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useState } from 'react';
 import { ChevronLeft } from 'lucide-react-native';
@@ -66,7 +66,7 @@ export default function SignupScreen({ navigation }) {
             if (!response.data.success) {
                 Alert.alert(
                     'Kunne ikke oprette konto',
-                    result.message || 'Der optod en fejl ved oprettelse of kontoen.'
+                    response.data.message || 'Registreringen kunne ikke gennemføres.'
                 );
                 return;
             }

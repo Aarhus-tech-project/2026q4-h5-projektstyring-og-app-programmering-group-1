@@ -1,4 +1,5 @@
 import { NavigationContainer } from '@react-navigation/native';
+import { navigationRef } from './src/navigation/navigationRef';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -14,6 +15,7 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import InventoryScreen from './src/screens/InventoryScreen';
+import ShoppingListScreen from './src/screens/ShoppingListScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -21,7 +23,7 @@ export default function App() {
   return (
     <AuthProvider>
       <SafeAreaProvider>
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
           <Stack.Navigator
             initialRouteName="Splash"
           >
@@ -85,6 +87,11 @@ export default function App() {
               options={{ headerShown: false }}
             />
 
+            <Stack.Screen
+              name="ShoppingList"
+              component={ShoppingListScreen}
+              options={{ headerShown: false }}
+            />
           </Stack.Navigator>
         </NavigationContainer>
       </SafeAreaProvider>
