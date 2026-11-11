@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"lagerklar/backend/database"
+	"lagerklar/backend/model"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -28,7 +29,7 @@ type GenCompanyReq struct {
 }
 
 // POST /v1/company
-// Creates the company and makes the authenticated user its leder.
+// Creates the company and makes the authenticated user its ejer.
 func HandleCreateCompany(c *gin.Context) {
 	var req GenCompanyReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -105,9 +106,10 @@ func HandleCreateCompany(c *gin.Context) {
 	_, err = tx.ExecContext(
 		c.Request.Context(),
 		`INSERT INTO company_memberships (company_id, user_id, role)
-		 VALUES ($1::uuid, $2::uuid, 'leder')`,
+		VALUES ($1::uuid, $2::uuid, $3)`,
 		companyID,
 		userID,
+		model.RoleEjer,
 	)
 	if err != nil {
 		log.Println("Create company membership database error:", err)
@@ -115,7 +117,7 @@ func HandleCreateCompany(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("Created company membership for user:", userID, "as leder")
+	fmt.Println("Created company membership for user:", userID, "as ejer")
 
 	// Return every company the user belongs to, including the new one
 	rows, err := tx.QueryContext(
@@ -204,7 +206,7 @@ func HandleDeleteCompany(c *gin.Context) {
 	}
 	defer tx.Rollback()
 
-	// Only a leder of the company may delete it
+	// Only the ejer of the company may delete it
 	var role string
 	err = tx.QueryRowContext(
 		c.Request.Context(),
@@ -227,10 +229,10 @@ func HandleDeleteCompany(c *gin.Context) {
 		writeDeleteCompanyFailed(c)
 		return
 	}
-	if role != "leder" {
+	if role != model.RoleEjer {
 		c.JSON(http.StatusForbidden, gin.H{
 			"success": false,
-			"message": "Only a leder can delete the company",
+			"message": "Only the ejer can delete the company",
 			"data":    gin.H{},
 		})
 		return

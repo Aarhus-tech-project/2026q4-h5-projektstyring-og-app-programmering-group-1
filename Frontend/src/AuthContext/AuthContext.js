@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import http from '../../http/http';
+const SERVER_IP = process.env.EXPO_PUBLIC_SERVER_IP;
 
 const TOKEN_KEY = 'token';
 const USER_KEY = 'user';
@@ -38,6 +39,8 @@ export function AuthProvider({ children }) {
             email: email.trim().toLowerCase(),
             password,
         });
+
+        console.log(SERVER_IP, 'Login response:', response.data);
 
         const result = response.data;
         const loginData = result.data;

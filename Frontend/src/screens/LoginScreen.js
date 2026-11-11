@@ -9,6 +9,7 @@ import resetStyles from '../styles/passwordResetStyles';
 
 
 
+export default function LoginScreen({ navigation }) {
 
 export default function LoginScreen({ navigation, route }) {
 
@@ -51,6 +52,7 @@ export default function LoginScreen({ navigation, route }) {
 
             Alert.alert(
                 'Kunne ikke logge ind',
+                error.message || 'Der optod en fejl under login',      
                 getErrorMessage(error, {
                     400: 'Indtast en gyldig email og password.',
                     401: 'Forkert email eller password.',

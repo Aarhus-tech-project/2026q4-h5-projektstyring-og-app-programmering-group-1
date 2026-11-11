@@ -130,6 +130,7 @@ export default function DashboardScreen() {
 
 
     const openCompany = (company) => {
+        // TODO: navigate to the company's inventory dashboard when it exists
         if (!company) return;
         setSelectedCompany(company);
         navigation.navigate('Inventory', { companyId: company.id, companyName: company.name });

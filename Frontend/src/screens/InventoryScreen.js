@@ -162,6 +162,7 @@ export default function InventoryScreen({ navigation, route }) {
         );
 
         try {
+            await updateItemQuantity(companyId, item.id, quantity);
             await adjustInventoryStock(companyId, item.id, {
                 direction: 'minus',
                 quantity: quantityToRemove,
