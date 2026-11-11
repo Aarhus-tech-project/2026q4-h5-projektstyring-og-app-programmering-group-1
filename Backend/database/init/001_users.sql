@@ -5,7 +5,7 @@ CREATE TABLE users (
     email         TEXT        NOT NULL UNIQUE,
     password      TEXT        NOT NULL,
     phone_number  TEXT,
-    avatar_url    TEXT,
+    avatar_url    BYTEA,      -- profile picture stored as raw image bytes (not a URL)
     is_active     BOOLEAN     NOT NULL DEFAULT TRUE,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );

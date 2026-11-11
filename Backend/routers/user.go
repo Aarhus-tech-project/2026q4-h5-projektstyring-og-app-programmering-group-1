@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"lagerklar/backend/database"
+	"lagerklar/backend/passwordreset"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -282,6 +283,131 @@ func HandleUpdateProfile(c *gin.Context) {
 				"avatar_url":   nullStringOrNil(avatarURL),
 			},
 		},
+	})
+}
+
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required"`
+	ConfirmPassword string `json:"confirm_password" binding:"required"`
+}
+
+// PUT /v1/user/:userID/password
+// Changes the logged-in user's password after checking the current one.
+// A wrong current password returns 422 (not 401, so the app doesn't log the user out).
+func HandleChangePassword(c *gin.Context) {
+	userID := c.GetString("userID")
+	if c.Param("userID") != userID {
+		c.JSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"message": "You can only change your own password",
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	var request ChangePasswordRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Invalid password data",
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	if request.NewPassword != request.ConfirmPassword {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Passwords do not match",
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	if err := passwordreset.ValidatePassword(request.NewPassword); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	var storedPassword string
+	err := database.DB.QueryRowContext(
+		ctx,
+		`SELECT password FROM users WHERE id = $1::uuid AND is_active`,
+		userID,
+	).Scan(&storedPassword)
+	if errors.Is(err, sql.ErrNoRows) {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"message": "User not found",
+			"data":    gin.H{},
+		})
+		return
+	}
+	if err != nil {
+		log.Println("Change password lookup error:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Could not change password",
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	if bcrypt.CompareHashAndPassword([]byte(storedPassword), []byte(request.CurrentPassword)) != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"success": false,
+			"message": "Current password is incorrect",
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	if request.NewPassword == request.CurrentPassword {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "New password must be different from the current password",
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(request.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		log.Println("Change password hash error:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Could not change password",
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	if _, err := database.DB.ExecContext(
+		ctx,
+		`UPDATE users SET password = $1 WHERE id = $2::uuid`,
+		string(hash),
+		userID,
+	); err != nil {
+		log.Println("Change password update error:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Could not change password",
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Password changed",
+		"data":    gin.H{},
 	})
 }
 

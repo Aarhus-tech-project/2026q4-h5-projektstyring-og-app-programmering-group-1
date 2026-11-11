@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"time"
@@ -12,8 +13,11 @@ import (
 	"github.com/joho/godotenv"
 
 	"lagerklar/backend/database"
+	"lagerklar/backend/email"
 	"lagerklar/backend/middleware"
+	"lagerklar/backend/passwordreset"
 	"lagerklar/backend/routers"
+	"lagerklar/backend/utils"
 )
 
 func main() {
@@ -27,6 +31,24 @@ func main() {
 	}
 	defer database.Close()
 	log.Println("Connected to PostgreSQL")
+
+	// Creates expiry and low stock notifications in the background
+	go utils.StartNotificationChecker(context.Background())
+
+	// Email (Gmail SMTP). Without credentials the server still runs, but reset codes can't be emailed.
+	var mailer passwordreset.Mailer
+	if emailService, err := email.NewServiceFromEnv(); err != nil {
+		log.Println("Email is disabled:", err)
+	} else {
+		mailer = emailService
+		routers.SetWelcomeMailer(emailService)
+	}
+
+	resetService, err := passwordreset.New(database.DB, mailer, []byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		log.Fatal("Could not set up password reset: ", err)
+	}
+	passwordReset := routers.NewPasswordResetHandler(resetService)
 
 	server := gin.Default()
 	server.SetTrustedProxies(nil)
@@ -64,6 +86,11 @@ func main() {
 
 		public.POST("/register", routers.Register)
 		public.POST("/login", routers.Login)
+
+		// Forgot password
+		public.POST("/password-reset/request", passwordReset.RequestCode)
+		public.POST("/password-reset/verify", passwordReset.VerifyCode)
+		public.POST("/password-reset/reset", passwordReset.ResetPassword)
 	}
 	protected := server.Group("/v1")
 	protected.Use(middleware.RequireAuth())
@@ -93,10 +120,15 @@ func main() {
 		})
 		protected.GET("/cvr=:cvr/userID=:userID", routers.ResearchCVR)
 		protected.GET("/user/:userID/avatar", routers.HandleGetAvatar)
+		protected.GET("/notifications", routers.HandleGetNotifications)
 
 		// PUT //
 		protected.PUT("/user/:userID", routers.HandleUpdateProfile)
 		protected.PUT("/user/:userID/avatar", routers.HandleUploadAvatar)
+		protected.PUT("/user/:userID/password", routers.HandleChangePassword)
+
+		// PATCH //
+		protected.PATCH("/notifications/:notificationID/read", routers.HandleMarkNotificationRead)
 
 		// POST //
 		protected.POST("/company", routers.HandleCreateCompany)
@@ -105,6 +137,7 @@ func main() {
 		// DELETE //
 		protected.DELETE("/company/:companyID/userID=:userID", routers.HandleDeleteCompany)
 		protected.DELETE("/user/:userID", routers.HandleDeleteAccount)
+		protected.DELETE("/notifications/:notificationID", routers.HandleDeleteNotification)
 	}
 
 	PORT := os.Getenv("PORT")

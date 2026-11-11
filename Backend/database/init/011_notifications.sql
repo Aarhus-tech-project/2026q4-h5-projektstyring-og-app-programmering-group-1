@@ -6,8 +6,10 @@ CREATE TABLE notifications (
     batch_id  UUID REFERENCES batches(id) ON DELETE SET NULL,
     item_id   UUID REFERENCES items(id) ON DELETE SET NULL,
     type      TEXT NOT NULL CHECK (type IN ('udloeb', 'lav_beholdning')),
+    message   TEXT NOT NULL DEFAULT '',
     sent_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    read_at   TIMESTAMPTZ
+    read_at   TIMESTAMPTZ,
+    deleted_at TIMESTAMPTZ  -- sat når brugeren sletter notifikationen
 );
 
 CREATE INDEX notifications_user_idx ON notifications (user_id, sent_at DESC);
