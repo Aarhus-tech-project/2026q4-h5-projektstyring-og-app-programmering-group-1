@@ -1,0 +1,15 @@
+LAGERKLAR – Velkommen til Lagerklar!
+
+{{if .RecipientName}}Hej {{.RecipientName}},{{else}}Hej,{{end}}
+
+Tak fordi du har oprettet en konto. Din konto er klar, og du kan nu logge ind i appen med din e-mail {{.RecipientEmail}}.
+
+Kom godt i gang:
+1. Opret eller tilslut dig en virksomhed
+2. Tilføj kategorier og varer til dit lager
+3. Få besked, når varer er ved at udløbe eller løbe tør
+
+Har du ikke selv oprettet denne konto, kan du nulstille passwordet via "Glemt password" i appen.
+
+--
+Denne e-mail er sendt automatisk af Lagerklar. Du kan ikke svare på den.

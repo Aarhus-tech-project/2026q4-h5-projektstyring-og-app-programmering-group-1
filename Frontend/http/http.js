@@ -21,10 +21,12 @@ http.interceptors.request.use(async (config) => {
 });
 
 http.interceptors.response.use((response) => response, async (error) => {
-  // A 401 from /login just means wrong credentials, so let LoginScreen handle it
-  const isLoginRequest = error.config?.url?.includes('/login');
+  // A 401 from /login just means wrong credentials, so let LoginScreen handle it.
+  // Password reset happens while logged out, so its errors must never redirect either.
+  const url = error.config?.url ?? '';
+  const isPublicAuthRequest = url.includes('/login') || url.includes('/password-reset');
 
-  if (error.response?.status === 401 && !isLoginRequest) {
+  if (error.response?.status === 401 && !isPublicAuthRequest) {
     await AsyncStorage.multiRemove(['token', 'user']);
     resetTo('Login');
   }

@@ -13,7 +13,9 @@ import (
 	"github.com/joho/godotenv"
 
 	"lagerklar/backend/database"
+	"lagerklar/backend/email"
 	"lagerklar/backend/middleware"
+	"lagerklar/backend/passwordreset"
 	"lagerklar/backend/routers"
 	"lagerklar/backend/utils"
 )
@@ -32,6 +34,21 @@ func main() {
 
 	// Creates expiry and low stock notifications in the background
 	go utils.StartNotificationChecker(context.Background())
+
+	// Email (Gmail SMTP). Without credentials the server still runs, but reset codes can't be emailed.
+	var mailer passwordreset.Mailer
+	if emailService, err := email.NewServiceFromEnv(); err != nil {
+		log.Println("Email is disabled:", err)
+	} else {
+		mailer = emailService
+		routers.SetWelcomeMailer(emailService)
+	}
+
+	resetService, err := passwordreset.New(database.DB, mailer, []byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		log.Fatal("Could not set up password reset: ", err)
+	}
+	passwordReset := routers.NewPasswordResetHandler(resetService)
 
 	server := gin.Default()
 	server.SetTrustedProxies(nil)
@@ -69,6 +86,11 @@ func main() {
 
 		public.POST("/register", routers.Register)
 		public.POST("/login", routers.Login)
+
+		// Forgot password
+		public.POST("/password-reset/request", passwordReset.RequestCode)
+		public.POST("/password-reset/verify", passwordReset.VerifyCode)
+		public.POST("/password-reset/reset", passwordReset.ResetPassword)
 	}
 	protected := server.Group("/v1")
 	protected.Use(middleware.RequireAuth())

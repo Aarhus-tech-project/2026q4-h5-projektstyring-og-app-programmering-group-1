@@ -5,16 +5,26 @@ import { ChevronLeft } from 'lucide-react-native';
 import { useAuth } from '../AuthContext/AuthContext';
 import { getErrorMessage } from '../../http/http';
 import styles from '../styles/loginStyles';
+import resetStyles from '../styles/passwordResetStyles';
 
 
 
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen({ navigation, route }) {
 
     const { login, user } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
-    const [email, setEmail] = useState(user?.email || '');
+    const [email, setEmail] = useState(route?.params?.email || user?.email || '');
     const [password, setPassword] = useState('');
+
+    // Efter "Glemt password" sendes brugeren tilbage hertil med sin email udfyldt
+    const passwordResetAt = route?.params?.passwordResetAt;
+    const [handledResetAt, setHandledResetAt] = useState(passwordResetAt);
+    if (passwordResetAt && passwordResetAt !== handledResetAt) {
+        setHandledResetAt(passwordResetAt);
+        setEmail(route.params.email || email);
+        setPassword('');
+    }
 
 
     async function handleLogin() {
@@ -89,6 +99,16 @@ export default function LoginScreen({ navigation }) {
                             secureTextEntry={true}
                             autoCapitalize="none"
                         />
+
+                        <Pressable
+                            style={resetStyles.forgotPasswordLink}
+                            accessibilityRole="link"
+                            onPress={() => navigation.navigate('ForgotPassword', { email: email.trim() })}
+                            disabled={isLoading}
+                            hitSlop={8}
+                        >
+                            <Text style={resetStyles.forgotPasswordText}>Glemt password?</Text>
+                        </Pressable>
 
                         <Pressable
                             style={styles.loginButton}
