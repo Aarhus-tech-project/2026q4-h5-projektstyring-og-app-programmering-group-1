@@ -75,12 +75,14 @@ func main() {
 		})
 		protected.GET("/cvr=:cvr/userID=:userID", routers.ResearchCVR)
 		protected.GET("/invitations", routers.HandleListMyInvitations)
+		protected.GET("/company/:companyID/members", middleware.RequireCompanyRole(model.RoleEjer, model.RoleLeder), routers.HandleListMembers)
 
 		// POST //
 		protected.POST("/company", routers.HandleCreateCompany)
 
 		// DELETE //
 		protected.DELETE("/company/:companyID/userID=:userID", routers.HandleDeleteCompany)
+		protected.DELETE("/company/:companyID/members/:memberID", middleware.RequireCompanyRole(model.RoleEjer, model.RoleLeder), routers.HandleRemoveMember)
 
 		protected.POST("/company/:companyID/invitations", middleware.RequireCompanyRole(model.RoleEjer, model.RoleLeder), routers.HandleCreateInvitation)
 		protected.POST("/invitations/:invitationID/accept", routers.HandleAcceptInvitation)

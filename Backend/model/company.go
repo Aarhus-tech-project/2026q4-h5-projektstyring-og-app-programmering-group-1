@@ -42,3 +42,11 @@ type ReceivedInvitation struct {
 	InvitedByName string    `json:"invited_by_name"`
 	ExpiresAt     time.Time `json:"expires_at"`
 }
+
+type CompanyMember struct {
+	UserID   string    `json:"user_id"`
+	Name     string    `json:"name"`
+	Email    string    `json:"email"`
+	Role     string    `json:"role"`
+	JoinedAt time.Time `json:"joined_at"`
+}
