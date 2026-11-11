@@ -62,6 +62,27 @@ const styles = StyleSheet.create({
         borderColor: dashboardColors.border,
     },
 
+    notificationBadge: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        minWidth: 20,
+        height: 20,
+        paddingHorizontal: 5,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: dashboardColors.red,
+        borderWidth: 2,
+        borderColor: dashboardColors.background,
+    },
+
+    notificationBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '700',
+    },
+
     header: {
         flex: 1,
     },
