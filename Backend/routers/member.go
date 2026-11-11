@@ -23,6 +23,7 @@ func canRemoveRole(removerRole string, memberRole string) bool {
 	}
 }
 
+// GET /v1/company/:companyID/members
 func HandleListMembers(c *gin.Context) {
 	companyID := c.Param("companyID")
 	companyRole := c.GetString("companyRole")
@@ -80,6 +81,7 @@ func writeListMembersFailed(c *gin.Context) {
 	})
 }
 
+// DELETE /v1/company/:companyID/members/:memberID
 func HandleRemoveMember(c *gin.Context) {
 	companyID := c.Param("companyID")
 	memberID := c.Param("memberID")
@@ -118,7 +120,7 @@ func HandleRemoveMember(c *gin.Context) {
 
 	if !canRemoveRole(companyRole, memberRole) {
 		c.JSON(http.StatusForbidden, gin.H{
-			"sucess":  false,
+			"success": false,
 			"message": "You do not have permission to remove this member",
 			"data":    gin.H{},
 		})
@@ -159,6 +161,11 @@ func HandleRemoveMember(c *gin.Context) {
 		return
 	}
 
+	if err := tx.Commit(); err != nil {
+		writeRemoveMemberFailed(c)
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Member removed",
@@ -173,6 +180,97 @@ func writeRemoveMemberFailed(c *gin.Context) {
 	c.JSON(http.StatusInternalServerError, gin.H{
 		"success": false,
 		"message": "Could not remove member",
+		"data":    gin.H{},
+	})
+}
+
+// POST /v1/company/:companyID/members/:memberID/promote
+func HandlePromoteMember(c *gin.Context) {
+	companyID := c.Param("companyID")
+	memberID := c.Param("memberID")
+
+	tx, err := database.DB.BeginTx(c.Request.Context(), nil)
+	if err != nil {
+		writePromoteMemberFailed(c)
+		return
+	}
+	defer tx.Rollback()
+
+	var memberRole string
+	err = tx.QueryRowContext(
+		c.Request.Context(),
+		`SELECT role
+				FROM company_memberships
+				WHERE company_id = $1::uuid AND user_id::text = $2
+				FOR UPDATE`,
+		companyID,
+		memberID,
+	).Scan(&memberRole)
+	if errors.Is(err, sql.ErrNoRows) {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"message": "Member not found",
+			"data":    gin.H{},
+		})
+		return
+	}
+	if err != nil {
+		log.Println("Find member to promote database error:", err)
+		writePromoteMemberFailed(c)
+		return
+	}
+
+	if memberRole != model.RoleMedarbejder {
+		c.JSON(http.StatusConflict, gin.H{
+			"success": false,
+			"message": "Member is not eligible for promotion",
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	var member model.CompanyMember
+	err = tx.QueryRowContext(
+		c.Request.Context(),
+		`UPDATE company_memberships cm
+				SET role = 'leder'
+				FROM users u
+				WHERE u.id = cm.user_id
+				AND cm.company_id = $1::uuid
+				AND cm.user_id::text = $2
+				RETURNING u.id::text, u.name, u.email, cm.role, cm.created_at`,
+		companyID,
+		memberID,
+	).Scan(
+		&member.UserID,
+		&member.Name,
+		&member.Email,
+		&member.Role,
+		&member.JoinedAt,
+	)
+	if err != nil {
+		log.Println("Promote member database error:", err)
+		writePromoteMemberFailed(c)
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		writePromoteMemberFailed(c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Member promoted",
+		"data":    member,
+	})
+
+}
+
+func writePromoteMemberFailed(c *gin.Context) {
+	c.JSON(http.StatusInternalServerError, gin.H{
+		"success": false,
+		"message": "Could not promote member",
 		"data":    gin.H{},
 	})
 }

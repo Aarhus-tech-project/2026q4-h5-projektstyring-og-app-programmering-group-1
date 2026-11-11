@@ -86,6 +86,7 @@ func main() {
 
 		protected.POST("/company/:companyID/invitations", middleware.RequireCompanyRole(model.RoleEjer, model.RoleLeder), routers.HandleCreateInvitation)
 		protected.POST("/invitations/:invitationID/accept", routers.HandleAcceptInvitation)
+		protected.POST("/company/:companyID/members/:memberID/promote", middleware.RequireCompanyRole(model.RoleEjer), routers.HandlePromoteMember)
 
 	}
 
