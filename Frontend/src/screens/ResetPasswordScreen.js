@@ -7,6 +7,7 @@ import styles from '../styles/loginStyles';
 import resetStyles, { resetColors } from '../styles/passwordResetStyles';
 import { resetPassword, getResetError } from '../services/passwordResetService';
 import { getPasswordRequirements, validateNewPassword } from '../utils/passwordResetUtils';
+import { useAuth } from '../AuthContext/AuthContext';
 
 function PasswordInput({ value, onChangeText, placeholder, isVisible, onToggleVisible, hasError, inputRef, ...props }) {
     return (
@@ -38,7 +39,22 @@ function PasswordInput({ value, onChangeText, placeholder, isVisible, onToggleVi
 }
 
 export default function ResetPasswordScreen({ navigation, route }) {
-    const { email, resetToken } = route.params;
+    const { email, resetToken, fromSettings } = route.params;
+    const { logout } = useAuth();
+
+    // Fra login: gå tilbage til login-skærmen.
+    // Fra indstillinger: brugeren er stadig logget ind med den gamle session, så log ud og start forfra på login.
+    async function goToLogin() {
+        const params = { email, passwordResetAt: Date.now() };
+
+        if (fromSettings) {
+            await logout();
+            navigation.reset({ index: 0, routes: [{ name: 'Login', params }] });
+            return;
+        }
+
+        navigation.popTo('Login', params);
+    }
 
     const confirmRef = useRef(null);
     const [password, setPassword] = useState('');
@@ -71,7 +87,7 @@ export default function ResetPasswordScreen({ navigation, route }) {
             Alert.alert(
                 'Password ændret',
                 'Dit password er nulstillet. Du kan nu logge ind med dit nye password.',
-                [{ text: 'Gå til login', onPress: () => navigation.popTo('Login', { email, passwordResetAt: Date.now() }) }],
+                [{ text: 'Gå til login', onPress: goToLogin }],
                 { cancelable: false }
             );
         } catch (saveError) {

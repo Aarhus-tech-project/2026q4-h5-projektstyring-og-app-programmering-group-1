@@ -68,6 +68,7 @@ export default function VerifyResetCodeScreen({ navigation, route }) {
             navigation.replace('ResetPassword', {
                 email,
                 resetToken: result.reset_token,
+                fromSettings: route.params.fromSettings ?? false,
             });
         } catch (verifyError) {
             const { code: errorCode, message } = getResetError(verifyError, 'Kunne ikke bekræfte koden. Prøv igen.');

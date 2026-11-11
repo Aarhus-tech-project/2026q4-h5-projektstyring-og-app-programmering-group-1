@@ -31,6 +31,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                 expiresIn: result?.expires_in_seconds ?? 600,
                 resendAfter: result?.resend_after_seconds ?? 60,
                 sentAt: Date.now(),
+                fromSettings: route.params?.fromSettings ?? false,
             });
         } catch (requestError) {
             const { message } = getResetError(requestError, 'Kunne ikke sende koden. Prøv igen.');

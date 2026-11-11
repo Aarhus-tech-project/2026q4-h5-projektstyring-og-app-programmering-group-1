@@ -125,6 +125,7 @@ func main() {
 		// PUT //
 		protected.PUT("/user/:userID", routers.HandleUpdateProfile)
 		protected.PUT("/user/:userID/avatar", routers.HandleUploadAvatar)
+		protected.PUT("/user/:userID/password", routers.HandleChangePassword)
 
 		// PATCH //
 		protected.PATCH("/notifications/:notificationID/read", routers.HandleMarkNotificationRead)

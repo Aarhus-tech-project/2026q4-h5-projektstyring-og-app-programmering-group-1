@@ -138,6 +138,18 @@ export function AuthProvider({ children }) {
         };
     }, [user?.avatar_url, user?.avatar_version, token]);
 
+    async function changePassword({ currentPassword, newPassword, confirmPassword }) {
+        if (!user?.id) {
+            throw new Error('Ingen bruger er logget ind.');
+        }
+
+        await http.put(`/user/${user.id}/password`, {
+            current_password: currentPassword,
+            new_password: newPassword,
+            confirm_password: confirmPassword,
+        });
+    }
+
     async function deleteAccount() {
         if (!user?.id) {
             throw new Error('Ingen bruger er logget ind.');
@@ -157,6 +169,7 @@ export function AuthProvider({ children }) {
             logout,
             updateProfile,
             deleteAccount,
+            changePassword,
             uploadAvatar,
             avatarSource,
         }),
