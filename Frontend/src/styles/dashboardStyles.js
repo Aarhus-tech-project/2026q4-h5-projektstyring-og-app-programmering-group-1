@@ -239,6 +239,8 @@ const styles = StyleSheet.create({
 
     chipsRow: {
         flexDirection: 'row',
+        // Ombryd til næste linje når der ikke er plads, i stedet for at løbe ud over kortet
+        flexWrap: 'wrap',
     },
 
     chip: {
