@@ -50,3 +50,12 @@ type CompanyMember struct {
 	Role     string    `json:"role"`
 	JoinedAt time.Time `json:"joined_at"`
 }
+
+type PendingInvitation struct {
+	ID            string    `json:"id"`
+	Email         string    `json:"email"`
+	Role          string    `json:"role"`
+	InvitedByName string    `json:"invited_by_name"`
+	CreatedAt     time.Time `json:"created_at"`
+	ExpiresAt     time.Time `json:"expires_at"`
+}

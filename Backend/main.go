@@ -76,6 +76,7 @@ func main() {
 		protected.GET("/cvr=:cvr/userID=:userID", routers.ResearchCVR)
 		protected.GET("/invitations", routers.HandleListMyInvitations)
 		protected.GET("/company/:companyID/members", middleware.RequireCompanyRole(model.RoleEjer, model.RoleLeder), routers.HandleListMembers)
+		protected.GET("/company/:companyID/invitations", middleware.RequireCompanyRole(model.RoleEjer, model.RoleLeder), routers.HandleListCompanyInvitations)
 
 		// POST //
 		protected.POST("/company", routers.HandleCreateCompany)
@@ -83,6 +84,7 @@ func main() {
 		// DELETE //
 		protected.DELETE("/company/:companyID/userID=:userID", routers.HandleDeleteCompany)
 		protected.DELETE("/company/:companyID/members/:memberID", middleware.RequireCompanyRole(model.RoleEjer, model.RoleLeder), routers.HandleRemoveMember)
+		protected.DELETE("/company/:companyID/invitations/:invitationID", middleware.RequireCompanyRole(model.RoleEjer, model.RoleLeder), routers.HandleCancelInvitation)
 
 		protected.POST("/company/:companyID/invitations", middleware.RequireCompanyRole(model.RoleEjer, model.RoleLeder), routers.HandleCreateInvitation)
 		protected.POST("/invitations/:invitationID/accept", routers.HandleAcceptInvitation)

@@ -351,3 +351,115 @@ func writeAcceptInvitationFailed(c *gin.Context) {
 		"data":    gin.H{},
 	})
 }
+
+// GET /v1/company/:companyID/invitations
+func HandleListCompanyInvitations(c *gin.Context) {
+	companyID := c.Param("companyID")
+	userID := c.GetString("userID")
+	companyRole := c.GetString("companyRole")
+
+	rows, err := database.DB.QueryContext(
+		c.Request.Context(),
+		`SELECT i.id::text, i.email, i.role, inviter.name, i.created_at, i.expires_at
+				FROM company_invitations i
+				JOIN users inviter ON inviter.id = i.invited_by
+				WHERE i.company_id = $1::uuid
+				AND i.status = 'pending'
+				AND i.expires_at > now()
+				AND ($2 = 'ejer' OR i.invited_by = $3::uuid)
+				ORDER BY i.created_at`,
+		companyID,
+		companyRole,
+		userID,
+	)
+	if err != nil {
+		log.Println("List company invitations database error:", err)
+		writeListCompanyInvitationsFailed(c)
+		return
+	}
+	defer rows.Close()
+
+	invitations := make([]model.PendingInvitation, 0)
+	for rows.Next() {
+		var invitation model.PendingInvitation
+		if err := rows.Scan(
+			&invitation.ID,
+			&invitation.Email,
+			&invitation.Role,
+			&invitation.InvitedByName,
+			&invitation.CreatedAt,
+			&invitation.ExpiresAt,
+		); err != nil {
+			writeListCompanyInvitationsFailed(c)
+			return
+		}
+		invitations = append(invitations, invitation)
+	}
+	if err := rows.Err(); err != nil {
+		writeListCompanyInvitationsFailed(c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "company invitations loaded",
+		"data":    invitations,
+	})
+}
+
+func writeListCompanyInvitationsFailed(c *gin.Context) {
+	c.JSON(http.StatusInternalServerError, gin.H{
+		"success": false,
+		"message": "Could not list company invitations",
+		"data":    gin.H{},
+	})
+}
+
+// DELETE /v1/company/:companyID/invitations/:invitationID
+func HandleCancelInvitation(c *gin.Context) {
+	companyID := c.Param("companyID")
+	invitationID := c.Param("invitationID")
+	userID := c.GetString("userID")
+	companyRole := c.GetString("companyRole")
+
+	var cancelledID string
+	err := database.DB.QueryRowContext(
+		c.Request.Context(),
+		`UPDATE company_invitations
+				SET status = 'cancelled'
+				WHERE id::text = $1
+				AND company_id = $2::uuid
+				AND status = 'pending'
+				AND ($3 = 'ejer' OR invited_by = $4::uuid)
+				RETURNING id::text`,
+		invitationID,
+		companyID,
+		companyRole,
+		userID,
+	).Scan(&cancelledID)
+	if errors.Is(err, sql.ErrNoRows) {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"message": "Invitation not found or you do not have permission to cancel it",
+			"data":    gin.H{},
+		})
+		return
+	}
+	if err != nil {
+		log.Println("Cancel invitation database error:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Could not cancel invitation",
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Invitation cancelled successfully",
+		"data": gin.H{
+			"id": cancelledID,
+		},
+	})
+}
