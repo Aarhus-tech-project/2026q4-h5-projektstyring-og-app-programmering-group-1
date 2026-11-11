@@ -23,7 +23,27 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router"
-    ]
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Appen skal bruge adgang til dine billeder, så du kan vælge et profilbillede.",
+          "cameraPermission": "Appen skal bruge adgang til kameraet, så du kan tage et profilbillede.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-image"
+    ],
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "02ddfe6a-b690-435f-a678-730156ca1988"
+      }
+    },
+    "owner": "minhlu14206"
   }
 }

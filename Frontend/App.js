@@ -1,10 +1,12 @@
 import { NavigationContainer } from '@react-navigation/native';
+import { navigationRef } from './src/navigation/navigationRef';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-
+import { StatusBar } from 'react-native';
 import { AuthProvider } from './src/AuthContext/AuthContext';
 
 import SplashScreen from './src/screens/SplashScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
@@ -13,20 +15,32 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import InventoryScreen from './src/screens/InventoryScreen';
+import ShoppingListScreen from './src/screens/ShoppingListScreen';
+import NotificationsScreen from './src/screens/NotificationsScreen';
+import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
+import VerifyResetCodeScreen from './src/screens/VerifyResetCodeScreen';
+import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
     <AuthProvider>
+      <StatusBar barStyle="dark-content" />
       <SafeAreaProvider>
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
           <Stack.Navigator
             initialRouteName="Splash"
           >
             <Stack.Screen
               name="Splash"
               component={SplashScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="Onboarding"
+              component={OnboardingScreen}
               options={{ headerShown: false }}
             />
 
@@ -55,6 +69,24 @@ export default function App() {
             />
 
             <Stack.Screen
+              name="ForgotPassword"
+              component={ForgotPasswordScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="VerifyResetCode"
+              component={VerifyResetCodeScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="ResetPassword"
+              component={ResetPasswordScreen}
+              options={{ headerShown: false, gestureEnabled: false }}
+            />
+
+            <Stack.Screen
               name="SignUp"
               component={SignupScreen}
               options={{ headerShown: false }}
@@ -78,6 +110,17 @@ export default function App() {
               options={{ headerShown: false }}
             />
 
+            <Stack.Screen
+              name="ShoppingList"
+              component={ShoppingListScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="Notifications"
+              component={NotificationsScreen}
+              options={{ headerShown: false }}
+            />
           </Stack.Navigator>
         </NavigationContainer>
       </SafeAreaProvider>

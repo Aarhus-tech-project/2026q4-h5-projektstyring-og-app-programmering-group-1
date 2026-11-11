@@ -1,4 +1,4 @@
--- Log over alle lagerændringer (UC-03).
+﻿-- Log over alle lagerændringer (UC-03).
 -- Opdatér batches.remaining_quantity og indsæt her i samme transaktion.
 CREATE TABLE stock_movements (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -6,6 +6,7 @@ CREATE TABLE stock_movements (
     user_id     UUID NOT NULL REFERENCES users(id),
     type        TEXT NOT NULL CHECK (type IN ('modtaget', 'brugt', 'solgt', 'kasseret', 'optælling')),
     quantity    NUMERIC(12, 3) NOT NULL CHECK (quantity > 0),
+    direction   TEXT CHECK (direction IS NULL OR (type = 'optælling' AND direction IN ('plus', 'minus'))),
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

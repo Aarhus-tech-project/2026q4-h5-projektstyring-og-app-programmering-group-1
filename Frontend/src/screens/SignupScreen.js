@@ -1,8 +1,12 @@
-import { SafeAreaView } from 'react-native-safe-area-context';
+﻿import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAvoidingView, Platform, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useState } from 'react';
-import { ChevronLeft } from 'lucide-react-native';
+import { Check, ChevronLeft, Circle } from 'lucide-react-native';
+import colors from '../constants/colors';
 import styles from '../styles/loginStyles';
+import resetStyles, { resetColors } from '../styles/passwordResetStyles';
+import http from '../../http/http';
+import { getPasswordRequirements, validateNewPassword } from '../utils/passwordResetUtils';
 
 
 export default function SignupScreen({ navigation }) {
@@ -36,19 +40,15 @@ export default function SignupScreen({ navigation }) {
             return;
         }
 
-        if (password !== confirmPassword) {
-            Alert.alert(
-                'Passwword matcher ikke',
-                'Sørg for at password og bekræft password matcher.'
-            );
+        if (!password) {
+            Alert.alert('Manglende password', 'Indtast et password.');
             return;
         }
 
-        if (password.length < 8) {
-            Alert.alert(
-                'Password er for kort',
-                'Paasword skal være mindst 8 tegn langt.'
-            );
+        // Samme regler som ved nulstilling af password: mindst 8 tegn, et bogstav og et tal.
+        const passwordError = validateNewPassword(password, confirmPassword);
+        if (passwordError) {
+            Alert.alert('Ugyldigt password', passwordError);
             return;
         }
 
@@ -69,11 +69,16 @@ export default function SignupScreen({ navigation }) {
             });
 
             const result = await response.json();
+            const response = await http.post("/register",{
+                name: `${trimmedFirstName} ${trimmedLastName}`,
+                email: trimmedEmail,
+                password,
+            })
 
-            if (!response.ok) {
+            if (!response.data.success) {
                 Alert.alert(
                     'Kunne ikke oprette konto',
-                    result.message || 'Der optod en fejl ved oprettelse of kontoen.'
+                    response.data.message || 'Registreringen kunne ikke gennemføres.'
                 );
                 return;
             }
@@ -90,11 +95,6 @@ export default function SignupScreen({ navigation }) {
         );
     } catch (error) {
         console.error('Registration request failed:', error);
-
-        Alert.alert(
-            'Forbindelsesfejl',
-            'Kunne ikke få forbindelse til serveren. Tjek din internetforbindelse og prøv igen.'
-        );
     } finally {
         setIsLoading(false);
     }
@@ -179,6 +179,19 @@ export default function SignupScreen({ navigation }) {
                             onChangeText={setPassword}
                             secureTextEntry={true}
                             autoCapitalize="none"/>
+
+                        <View style={resetStyles.requirements}>
+                            {getPasswordRequirements(password).map((requirement) => (
+                                <View key={requirement.key} style={resetStyles.requirementRow}>
+                                    {requirement.met
+                                        ? <Check size={14} color={colors.primary} />
+                                        : <Circle size={10} color={resetColors.muted} />}
+                                    <Text style={[resetStyles.requirementText, requirement.met && resetStyles.requirementMet]}>
+                                        {requirement.label}
+                                    </Text>
+                                </View>
+                            ))}
+                        </View>
 
                         <Text style={styles.label}>Bekræft password</Text>
                         <TextInput

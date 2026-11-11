@@ -3,16 +3,29 @@ import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View, Alert
 import { useState } from 'react'
 import { ChevronLeft } from 'lucide-react-native';
 import { useAuth } from '../AuthContext/AuthContext';
+import { getErrorMessage } from '../../http/http';
 import styles from '../styles/loginStyles';
+import resetStyles from '../styles/passwordResetStyles';
 
 
 
 export default function LoginScreen({ navigation }) {
 
+export default function LoginScreen({ navigation, route }) {
+
     const { login, user } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
-    const [email, setEmail] = useState(user?.email || '');
+    const [email, setEmail] = useState(route?.params?.email || user?.email || '');
     const [password, setPassword] = useState('');
+
+    // Efter "Glemt password" sendes brugeren tilbage hertil med sin email udfyldt
+    const passwordResetAt = route?.params?.passwordResetAt;
+    const [handledResetAt, setHandledResetAt] = useState(passwordResetAt);
+    if (passwordResetAt && passwordResetAt !== handledResetAt) {
+        setHandledResetAt(passwordResetAt);
+        setEmail(route.params.email || email);
+        setPassword('');
+    }
 
 
     async function handleLogin() {
@@ -34,11 +47,17 @@ export default function LoginScreen({ navigation }) {
 
             navigation.replace('Dashboard');
         } catch (error) {
-            console.error('Login failed: ' , error);
+            // console.log i stedet for console.error, så der ikke vises en rød fejl-overlay i appen
+            console.log('Login failed:', error?.response?.status ?? error?.message);
 
             Alert.alert(
                 'Kunne ikke logge ind',
                 error.message || 'Der optod en fejl under login',      
+                getErrorMessage(error, {
+                    400: 'Indtast en gyldig email og password.',
+                    401: 'Forkert email eller password.',
+                    fallback: 'Der opstod en fejl under login. Prøv igen.',
+                })
             );
         } finally {
             setIsLoading(false);
@@ -82,6 +101,16 @@ export default function LoginScreen({ navigation }) {
                             secureTextEntry={true}
                             autoCapitalize="none"
                         />
+
+                        <Pressable
+                            style={resetStyles.forgotPasswordLink}
+                            accessibilityRole="link"
+                            onPress={() => navigation.navigate('ForgotPassword', { email: email.trim() })}
+                            disabled={isLoading}
+                            hitSlop={8}
+                        >
+                            <Text style={resetStyles.forgotPasswordText}>Glemt password?</Text>
+                        </Pressable>
 
                         <Pressable
                             style={styles.loginButton}

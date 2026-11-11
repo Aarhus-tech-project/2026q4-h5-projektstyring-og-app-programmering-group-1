@@ -37,6 +37,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: dashboardColors.primary,
+        overflow: 'hidden',
+    },
+
+    brandMarkImage: {
+        width: '100%',
+        height: '100%',
     },
 
     brandMarkText: {
@@ -54,6 +60,27 @@ const styles = StyleSheet.create({
         backgroundColor: dashboardColors.card,
         borderWidth: 1,
         borderColor: dashboardColors.border,
+    },
+
+    notificationBadge: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        minWidth: 20,
+        height: 20,
+        paddingHorizontal: 5,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: dashboardColors.red,
+        borderWidth: 2,
+        borderColor: dashboardColors.background,
+    },
+
+    notificationBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '700',
     },
 
     header: {
@@ -212,6 +239,8 @@ const styles = StyleSheet.create({
 
     chipsRow: {
         flexDirection: 'row',
+        // Ombryd til næste linje når der ikke er plads, i stedet for at løbe ud over kortet
+        flexWrap: 'wrap',
     },
 
     chip: {

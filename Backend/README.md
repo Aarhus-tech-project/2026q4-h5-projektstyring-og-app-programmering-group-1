@@ -53,3 +53,26 @@ postgres://lagerklar:<password>@db:5432/lagerklar?sslmode=disable
    ```bash
    docker compose down -v
    docker compose up -d --build
+## Forgot password
+
+Endpoints (public): `POST /v1/password-reset/request`, `/verify` and `/reset`.
+The 6-digit code is emailed through Gmail, so `GMAIL_EMAIL` and `GMAIL_APP_PASSWORD` must be set in `.env` (see `.env.example`).
+
+Existing databases need the new tables:
+
+```bash
+docker exec -i lagerklar-db psql -U lagerklar -d lagerklar < database/migrations/008_password_reset.sql
+```
+
+### Running the tests
+
+The password reset tests need an empty throwaway PostgreSQL (never your real database):
+
+```bash
+docker run -d --name lagerklar-test -e POSTGRES_DB=lagerklar_test -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test \
+  -p 55432:5432 -v "$(pwd)/database/init:/docker-entrypoint-initdb.d:ro" postgres:16-alpine
+TEST_DATABASE_URL="postgres://test:test@localhost:55432/lagerklar_test?sslmode=disable" go test ./...
+docker rm -f lagerklar-test
+```
+
+Without `TEST_DATABASE_URL` those tests are skipped.
