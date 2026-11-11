@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Pressable, ScrollView, Text, View, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
@@ -15,7 +15,10 @@ import {
 import styles, { dashboardColors } from '../styles/dashboardStyles';
 import { useAuth } from '../AuthContext/AuthContext';
 import http from "../../http/http";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { getInventoryItems } from "../services/inventoryService";
+import { FILTERS, getInventoryCounts } from "../utils/inventoryUtils";
+import { getNotifications } from "../services/notificationService";
 import { SaveExpoToken, getNotificationPermission } from "../utils/notificationUtils";
 
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -43,9 +46,72 @@ export default function DashboardScreen() {
 
     const [askNotifications, setAskNotifications] = useState(false);
 
-    // Inventory counts are not sent by the backend yet, so missing ones count as 0
-    const totalItems = companies.reduce((sum, c) => sum + (c.itemCount ?? 0), 0);
-    const totalWarnings = companies.reduce((sum, c) => sum + (c.expiringSoonCount ?? 0) + (c.lowStockCount ?? 0), 0);
+    // Lagertal pr. virksomhed, hentet fra databasen: { [companyId]: { itemCount, expiringSoonCount, lowStockCount } }
+    const [stats, setStats] = useState({});
+    const [loadingStats, setLoadingStats] = useState(false);
+    const hasLoadedStats = useRef(false);
+
+    const loadStats = useCallback(async () => {
+        if (companies.length === 0) {
+            setStats({});
+            return;
+        }
+
+        // Loading-modal kun ved første hentning; senere opdateringer sker i baggrunden
+        if (!hasLoadedStats.current) setLoadingStats(true);
+        try {
+            const results = await Promise.all(
+                companies.map(async (company) => {
+                    try {
+                        const items = await getInventoryItems(company.id);
+                        const counts = getInventoryCounts(items);
+                        return [company.id, {
+                            itemCount: items.length,
+                            expiringSoonCount: counts[FILTERS.EXPIRING],
+                            lowStockCount: counts[FILTERS.LOW] + counts[FILTERS.OUT],
+                        }];
+                    } catch (error) {
+                        console.error(`Error loading inventory for company ${company.id}:`, error);
+                        return [company.id, null];
+                    }
+                })
+            );
+            setStats(Object.fromEntries(results.filter(([, value]) => value)));
+            hasLoadedStats.current = true;
+        } finally {
+            setLoadingStats(false);
+        }
+    }, [companies]);
+
+    // Hent igen hver gang dashboardet får fokus, så tallene er opdaterede efter ændringer i lageret
+    useFocusEffect(
+        useCallback(() => {
+            loadStats();
+        }, [loadStats])
+    );
+
+    // Antal ulæste notifikationer til badget på klokken
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    const loadUnreadCount = useCallback(async () => {
+        try {
+            const data = await getNotifications();
+            setUnreadCount(Array.isArray(data) ? data.filter((n) => !n.read_at).length : 0);
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+        }
+    }, []);
+
+    // Opdatér når man kommer tilbage fra notifikationsskærmen
+    useFocusEffect(
+        useCallback(() => {
+            loadUnreadCount();
+        }, [loadUnreadCount])
+    );
+
+    const companiesWithStats = companies.map((c) => ({ ...c, ...stats[c.id] }));
+    const totalItems = companiesWithStats.reduce((sum, c) => sum + (c.itemCount ?? 0), 0);
+    const totalWarnings = companiesWithStats.reduce((sum, c) => sum + (c.expiringSoonCount ?? 0) + (c.lowStockCount ?? 0), 0);
 
 
     useEffect(() => {
@@ -121,8 +187,15 @@ export default function DashboardScreen() {
                     style={styles.avatar}
                     onPress={() => navigation.navigate('Notifications')}
                     accessibilityRole="button"
-                    accessibilityLabel="Notifikationer">
+                    accessibilityLabel={unreadCount > 0 ? `Notifikationer, ${unreadCount} ulæste` : 'Notifikationer'}>
                     <Bell size={22} color={dashboardColors.text} />
+                    {unreadCount > 0 && (
+                        <View style={styles.notificationBadge}>
+                            <Text style={styles.notificationBadgeText}>
+                                {unreadCount > 99 ? '99+' : unreadCount}
+                            </Text>
+                        </View>
+                    )}
                 </Pressable>
             </View>
 
@@ -162,7 +235,7 @@ export default function DashboardScreen() {
                         </View>
 
                         <View style={styles.companyGrid}>
-                            {companies.map((company, index) => (
+                            {companiesWithStats.map((company, index) => (
                                 <CompanyCard
                                     key={company.id}
                                     company={company}
@@ -220,6 +293,7 @@ export default function DashboardScreen() {
             />
 
             <LoadingModal visible={loading} message="Sletter virksomhed..." />
+            <LoadingModal visible={loadingStats && !loading} message="Henter varer..." />
         </SafeAreaView>
     );
 }
