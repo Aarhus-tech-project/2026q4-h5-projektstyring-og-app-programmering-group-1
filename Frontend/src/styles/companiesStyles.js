@@ -20,6 +20,7 @@ export const companiesColors = {
 
 // Farver pr. rolle til badges og avatarer
 export const roleColors = {
+    ejer: { color: companiesColors.primary, background: companiesColors.primarySoft },
     leder: { color: companiesColors.blue, background: companiesColors.blueSoft },
     medarbejder: { color: companiesColors.gray, background: companiesColors.graySoft },
 };

@@ -1,17 +1,19 @@
-// Roller i en virksomhed. Kun en leder kan se virksomhedens detaljer og medarbejdere.
+// Roller i en virksomhed. Kun ejer og leder kan se virksomhedens detaljer og medarbejdere.
 export const ROLES = {
+    OWNER: 'ejer',
     MANAGER: 'leder',
     EMPLOYEE: 'medarbejder',
 };
 
 const ROLE_LABELS = {
+    [ROLES.OWNER]: 'Ejer',
     [ROLES.MANAGER]: 'Leder',
     [ROLES.EMPLOYEE]: 'Medarbejder',
 };
 
 export const getRoleLabel = (role) => ROLE_LABELS[role] ?? role ?? '';
 
-export const isCompanyManager = (role) => role === ROLES.MANAGER;
+export const isCompanyManager = (role) => role === ROLES.OWNER || role === ROLES.MANAGER;
 
 export const getInitials = (name = '') =>
     name
