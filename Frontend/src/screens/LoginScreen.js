@@ -8,9 +8,6 @@ import styles from '../styles/loginStyles';
 import resetStyles from '../styles/passwordResetStyles';
 
 
-
-export default function LoginScreen({ navigation }) {
-
 export default function LoginScreen({ navigation, route }) {
 
     const { login, user } = useAuth();

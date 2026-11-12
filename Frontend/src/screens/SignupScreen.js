@@ -56,19 +56,6 @@ export default function SignupScreen({ navigation }) {
 
 
         try {
-            const response = await fetch(`${process.env.EXPO_PUBLIC_SERVER_IP}/register`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    name: `${trimmedFirstName} ${trimmedLastName}`,
-                    email: trimmedEmail,
-                    password,
-                }),
-            });
-
-            const result = await response.json();
             const response = await http.post("/register",{
                 name: `${trimmedFirstName} ${trimmedLastName}`,
                 email: trimmedEmail,
