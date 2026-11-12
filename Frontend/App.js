@@ -17,6 +17,8 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import InventoryScreen from './src/screens/InventoryScreen';
 import ShoppingListScreen from './src/screens/ShoppingListScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
+import CompaniesScreen from './src/screens/CompaniesScreen';
+import CompanyDetailScreen from './src/screens/CompanyDetailScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import VerifyResetCodeScreen from './src/screens/VerifyResetCodeScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
@@ -119,6 +121,18 @@ export default function App() {
             <Stack.Screen
               name="Notifications"
               component={NotificationsScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="Companies"
+              component={CompaniesScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="CompanyDetail"
+              component={CompanyDetailScreen}
               options={{ headerShown: false }}
             />
           </Stack.Navigator>

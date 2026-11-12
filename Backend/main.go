@@ -126,6 +126,8 @@ func main() {
 		protected.GET("/company/:companyID/invitations", middleware.RequireCompanyRole(model.RoleEjer, model.RoleLeder), routers.HandleListCompanyInvitations)
 		protected.GET("/user/:userID/avatar", routers.HandleGetAvatar)
 		protected.GET("/notifications", routers.HandleGetNotifications)
+		protected.GET("/companies", routers.HandleGetManagedCompanies)
+		protected.GET("/companies/:companyID", routers.HandleGetCompanyDetails)
 
 		// PUT //
 		protected.PUT("/user/:userID", routers.HandleUpdateProfile)

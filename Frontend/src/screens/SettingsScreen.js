@@ -57,7 +57,7 @@ export default function SettingsScreen({ navigation }) {
             <ScrollView contentContainerStyle={styles.content}>
                 <SettingsGroup title="Profil">
                     <SettingsRow label="Din profil" onPress={() => navigation.navigate('ProfileScreen')} />
-                    <SettingsRow label="Virksomheder" onPress={comingSoon} />
+                    <SettingsRow label="Virksomheder" onPress={() => navigation.navigate('Companies')} />
                     <SettingsRow label="Notifikationer & påmindelser" onPress={() => navigation.navigate('Notifications')} isLast />
                 </SettingsGroup>
 

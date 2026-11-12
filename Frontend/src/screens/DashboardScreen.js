@@ -206,7 +206,11 @@ export default function DashboardScreen() {
                         contentContainerStyle={styles.listContent}
                         showsVerticalScrollIndicator={false}>
 
-                        <View style={styles.summaryCard}>
+                        <Pressable
+                            style={({ pressed }) => [styles.summaryCard, pressed && styles.pressed]}
+                            onPress={() => navigation.navigate('Companies')}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Dit overblik: ${companies.length} ${companies.length === 1 ? 'virksomhed' : 'virksomheder'}, ${totalItems} varer, ${totalWarnings} advarsler. Åbn virksomheder`}>
                             <Text style={styles.summaryTitle}>Dit overblik</Text>
                             <View style={styles.summaryMain}>
                                 <Layers size={34} color="#FFFFFF" />
@@ -233,7 +237,7 @@ export default function DashboardScreen() {
                                     </View>
                                 </View>
                             </View>
-                        </View>
+                        </Pressable>
 
                         <View style={styles.companyGrid}>
                             {companiesWithStats.map((company, index) => (
