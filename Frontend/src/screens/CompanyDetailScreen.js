@@ -2,11 +2,11 @@ import { useCallback, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Building2, CalendarDays, ChevronLeft, Lock, MapPin, SearchX, Users } from 'lucide-react-native';
+import { Building2, CalendarDays, ChevronLeft, Lock, MapPin, SearchX, Users, Mail } from 'lucide-react-native';
 import styles, { companiesColors, roleColors } from '../styles/companiesStyles';
-import { getCompanyDetails } from '../services/companyService';
+import { getCompanyDetails, getCompanyInvitations } from '../services/companyService';
 import { getErrorMessage } from '../../http/http';
-import { formatDate, getInitials } from '../utils/companyRoles';
+import { formatDate, getInitials, getRoleLabel } from '../utils/companyRoles';
 import { useAuth } from '../AuthContext/AuthContext';
 import RoleBadge from '../components/RoleBadge';
 
@@ -34,28 +34,47 @@ export default function CompanyDetailScreen({ navigation, route }) {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
 
+    const [invitations, setInvitations] = useState([]);
+    const [invitationsError, setInvitationsError] = useState(null);
+
     const loadDetails = useCallback(async ({ isRefresh = false } = {}) => {
         if (!companyId) {
-            setError({ status: 404 });
+            setError({ status: 404});
             setLoading(false);
             return;
         }
 
         if (isRefresh) setRefreshing(true);
         setError(null);
-        try {
-            const data = await getCompanyDetails(companyId);
-            setCompany(data.company);
-            setMembers(data.members);
-        } catch (err) {
+
+        const [detailsResult, invitationsResult] = await Promise.allSettled([
+            getCompanyDetails(companyId),
+            getCompanyInvitations(companyId)
+        ]);
+
+
+        if (detailsResult.status === 'fulfilled') {
+            setCompany(detailsResult.value.company);
+            setMembers(detailsResult.value.members);
+        } else {
+            const err = detailsResult.reason;
             setError({
                 status: err?.response?.status,
-                message: getErrorMessage(err, { fallback: 'Kunne ikke hente virksomheden.' }),
+                message: getErrorMessage(err, { fallback: 'Kunne ikke hente virksomheden.'}),
             });
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
         }
+
+        if (invitationsResult.status === 'fulfilled') {
+            setInvitations(invitationsResult.value);
+            setInvitationsError(null);
+        } else {
+            setInvitationsError(
+                getErrorMessage(invitationsResult.reason, { fallback: 'Kunne ikke hente invitationer.' })
+            );
+        }
+
+        setLoading(false);
+        setRefreshing(false);
     }, [companyId]);
 
     useFocusEffect(
@@ -163,6 +182,12 @@ export default function CompanyDetailScreen({ navigation, route }) {
                         ))
                     )}
                 </View>
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle} accissibilityRole="header">Invitationer</Text>
+                    {!invitationsError && <Text style={styles.sectionCount}>{invitations.length}</Text>}
+                </View>
+
+                <InvitationList invitations={invitations} error={invitationsError} />
             </ScrollView>
         );
     };
@@ -249,4 +274,71 @@ function MemberRow({ member, isCurrentUser, isLast }) {
             <RoleBadge role={member.role} />
         </View>
     );
+}
+
+function InvitationList({ invitations, error }) {
+    if (error) {
+        return (
+            <View style={styles.memberGroup}>
+                <View style={styles.emptyMembers}>
+                    <Text style={styles.emptyDescription}>{error}</Text>
+                    <Text style={styles.emptyDescription}>Prøv at trække ned for at opdatere.</Text>
+                </View>
+            </View>
+        )
+    }
+
+    if (invitations.length === 0) {
+        return (
+            <View style={styles.memberGroup}>
+                <View style={styles.emptyMembers}>
+                    <Mail size={36} color={companiesColors.muted} strokeWidth={1.5} />
+                    <Text style={styles.emptyTitle}>Ingen invitationer</Text>
+                    <Text style={styles.emptyDescription}>
+                        Invitationer, der er sendt til andre brugere, vises her.
+                    </Text>
+                </View>
+            </View>
+        );
+    }
+
+    return (
+        <View style={styles.memberGroup}>
+            {invitations.map((invitation, index) => (
+                <InvitationRow
+                    key={invitation.id}
+                    invitation={invitation}
+                    isLast={index === invitations.length - 1}
+                />
+            ))}
+        </View>
+    );
+}
+
+function InvitationRow({ invitation, isLast }) {
+    const expiresAt = formatDate(invitation.expires_at);
+    const details = [
+        `Inviteret af ${invitation.invited_by_name}`,
+        expiresAt && `udløber ${expiresAt}`,
+    ]
+    .filter(Boolean)
+    .join(' • ');
+
+    return (
+        <View
+            style={[styles.memberRow, !isLast && styles.memberDivider]}
+            accessible
+            accessibilityLabel={`${invitation.email}, ${getRoleLabel(invitation.role)}, ${details}`}>
+            <View style={[styles.memberAvatar, { backgroundColor: companiesColors.graySoft }]}>
+                <Mail size={18} color={companiesColors.muted} />
+            </View>
+
+            <View style={styles.memberBody}>
+                <Text style={styles.memberName} numberOfLines={1}>{invitation.email}</Text>
+                <Text style={styles.memberEmail} numberOfLines={1}>{details}</Text>
+            </View>
+
+            <RoleBadge role={invitation.role} />
+        </View>
+    )
 }
