@@ -8,12 +8,15 @@ import (
 	"time"
 
 	"lagerklar/backend/database"
+	"lagerklar/backend/model"
 
 	"github.com/gin-gonic/gin"
 )
 
-// Only a leder may view a company's details and members; a medarbejder only works with the inventory.
-const roleLeder = "leder"
+// Only an ejer or leder may view a company's details and members; a medarbejder only works with the inventory.
+func canManageCompany(role string) bool {
+	return role == model.RoleEjer || role == model.RoleLeder
+}
 
 type ManagedCompany struct {
 	ID          string    `json:"id"`
@@ -35,7 +38,7 @@ type CompanyMember struct {
 }
 
 // GET /v1/companies
-// Lists the companies where the logged-in user is leder.
+// Lists the companies where the logged-in user is ejer or leder.
 // Companies where the user is only medarbejder are left out.
 func HandleGetManagedCompanies(c *gin.Context) {
 	userID := c.GetString("userID")
@@ -47,10 +50,11 @@ func HandleGetManagedCompanies(c *gin.Context) {
 		 FROM company_memberships cm
 		 JOIN companies c ON c.id = cm.company_id
 		 WHERE cm.user_id = $1::uuid
-		   AND cm.role = $2
+		   AND cm.role IN ($2, $3)
 		 ORDER BY c.name`,
 		userID,
-		roleLeder,
+		model.RoleEjer,
+		model.RoleLeder,
 	)
 	if err != nil {
 		log.Println("Get managed companies database error:", err)
@@ -92,7 +96,7 @@ func HandleGetManagedCompanies(c *gin.Context) {
 
 // GET /v1/companies/:companyID
 // Returns the company's details and all its members.
-// 404 if the user isn't a member (so company IDs can't be probed), 403 if the user isn't leder.
+// 404 if the user isn't a member (so company IDs can't be probed), 403 if the user isn't ejer or leder.
 func HandleGetCompanyDetails(c *gin.Context) {
 	userID := c.GetString("userID")
 	companyID := c.Param("companyID")
@@ -128,10 +132,10 @@ func HandleGetCompanyDetails(c *gin.Context) {
 		return
 	}
 
-	if company.Role != roleLeder {
+	if !canManageCompany(company.Role) {
 		c.JSON(http.StatusForbidden, gin.H{
 			"success": false,
-			"message": "Only a leder can view company details",
+			"message": "Only an ejer or leder can view company details",
 			"data":    gin.H{},
 		})
 		return
@@ -144,7 +148,7 @@ func HandleGetCompanyDetails(c *gin.Context) {
 		 FROM company_memberships cm
 		 JOIN users u ON u.id = cm.user_id
 		 WHERE cm.company_id = $1::uuid
-		 ORDER BY CASE cm.role WHEN 'leder' THEN 0 ELSE 1 END,
+		 ORDER BY CASE cm.role WHEN 'ejer' THEN 0 WHEN 'leder' THEN 1 ELSE 2 END,
 		          lower(u.name)`,
 		companyID,
 	)
