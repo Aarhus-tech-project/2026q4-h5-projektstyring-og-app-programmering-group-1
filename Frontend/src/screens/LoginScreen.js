@@ -8,8 +8,6 @@ import styles from '../styles/loginStyles';
 import resetStyles from '../styles/passwordResetStyles';
 
 
-
-
 export default function LoginScreen({ navigation, route }) {
 
     const { login, user } = useAuth();
@@ -51,6 +49,7 @@ export default function LoginScreen({ navigation, route }) {
 
             Alert.alert(
                 'Kunne ikke logge ind',
+                error.message || 'Der optod en fejl under login',      
                 getErrorMessage(error, {
                     400: 'Indtast en gyldig email og password.',
                     401: 'Forkert email eller password.',
