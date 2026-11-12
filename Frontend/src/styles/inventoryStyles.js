@@ -1,14 +1,38 @@
 import { StyleSheet } from 'react-native';
 import colors from '../constants/colors';
-import { dashboardColors } from './dashboardStyles';
 
 export const inventoryColors = {
-    ...dashboardColors,
-    warning: '#B45309',
-    warningSoft: '#FEF3C7',
+    background: '#F2F2F5',
+    card: '#FFFFFF',
+    text: '#111111',
+    textSecondary: '#3F444B',
+    muted: '#6B6F76',
+    subtle: '#9AA1AC',
+    disabled: '#C4C6CC',
+    divider: '#ECECF0',
+    control: '#E4E4E9',
+    controlSoft: '#F2F2F5',
+    // Darker than colors.primary so white text on it passes WCAG AA (4.5:1)
+    primary: '#177A4F',
+    primarySoft: '#E6F4EC',
+    red: '#B42318',
+    redSoft: '#FDECEA',
+    amber: '#A15C00',
+    amberSoft: '#FEF3E2',
+    violet: '#6D28D9',
+    violetSoft: '#EFE9FD',
     blue: colors.alternatives.blue,
-    blueSoft: '#DBEAFE',
 };
+
+// Colour per status tone from getItemStatus()
+export const toneColors = {
+    none: inventoryColors.muted,
+    red: inventoryColors.red,
+    amber: inventoryColors.amber,
+    violet: inventoryColors.violet,
+};
+
+const CONTENT_MAX_WIDTH = 720;
 
 const styles = StyleSheet.create({
     safeArea: {
@@ -16,100 +40,225 @@ const styles = StyleSheet.create({
         backgroundColor: inventoryColors.background,
     },
 
-    topBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        paddingHorizontal: 12,
-        paddingTop: 8,
+    // Header
+    header: {
+        width: '100%',
+        maxWidth: CONTENT_MAX_WIDTH,
+        alignSelf: 'center',
+        paddingTop: 4,
         paddingBottom: 12,
+        gap: 12,
     },
 
     backButton: {
+        width: 44,
+        height: 44,
+        marginLeft: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    titleBlock: {
+        paddingHorizontal: 20,
+        gap: 2,
+    },
+
+    title: {
+        color: inventoryColors.text,
+        fontSize: 32,
+        lineHeight: 38,
+        fontWeight: '700',
+        letterSpacing: -0.5,
+    },
+
+    subtitle: {
+        color: inventoryColors.muted,
+        fontSize: 15,
+    },
+
+    subtitleAlert: {
+        color: inventoryColors.red,
+        fontWeight: '600',
+    },
+
+    // Overblik / Varer switch
+    tabs: {
+        flexDirection: 'row',
+        marginHorizontal: 16,
+        padding: 3,
+        gap: 2,
+        borderRadius: 12,
+        backgroundColor: inventoryColors.control,
+    },
+
+    tab: {
+        flex: 1,
+        height: 40,
+        borderRadius: 9,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+    },
+
+    tabActive: {
+        backgroundColor: inventoryColors.card,
+        shadowColor: '#000',
+        shadowOpacity: 0.12,
+        shadowRadius: 3,
+        shadowOffset: { width: 0, height: 1 },
+        elevation: 2,
+    },
+
+    tabText: {
+        color: inventoryColors.text,
+        fontSize: 15,
+        fontWeight: '500',
+    },
+
+    tabTextActive: {
+        fontWeight: '600',
+    },
+
+    tabCount: {
+        color: inventoryColors.muted,
+        fontSize: 13,
+    },
+
+    // Search + category chips (Varer tab)
+    searchBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        height: 44,
+        marginHorizontal: 16,
+        paddingLeft: 12,
+        borderRadius: 12,
+        backgroundColor: inventoryColors.control,
+    },
+
+    searchInput: {
+        flex: 1,
+        height: 44,
+        color: inventoryColors.text,
+        fontSize: 17,
+    },
+
+    clearSearchButton: {
         width: 44,
         height: 44,
         alignItems: 'center',
         justifyContent: 'center',
     },
 
-    title: {
-        color: inventoryColors.text,
-        fontSize: 22,
-        fontWeight: '800',
-    },
-
-    subtitle: {
-        color: inventoryColors.muted,
-        fontSize: 13,
-    },
-
-    centered: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 32,
-        gap: 12,
-    },
-
-    emptyList: {
-        alignItems: 'center',
-        padding: 32,
+    chipRow: {
+        paddingHorizontal: 16,
         gap: 8,
     },
 
-    messageTitle: {
+    chip: {
+        height: 36,
+        paddingHorizontal: 14,
+        borderRadius: 18,
+        justifyContent: 'center',
+        backgroundColor: inventoryColors.card,
+    },
+
+    chipActive: {
+        backgroundColor: inventoryColors.text,
+    },
+
+    chipText: {
         color: inventoryColors.text,
-        fontSize: 17,
-        fontWeight: '700',
-        textAlign: 'center',
-    },
-
-    messageText: {
-        color: inventoryColors.muted,
         fontSize: 15,
-        textAlign: 'center',
+        fontWeight: '600',
     },
 
-    retryText: {
-        color: inventoryColors.primary,
-        fontSize: 16,
-        fontWeight: '700',
+    chipTextActive: {
+        color: inventoryColors.card,
     },
 
-    listContent: {
+    // Scroll content
+    content: {
+        width: '100%',
+        maxWidth: CONTENT_MAX_WIDTH,
+        alignSelf: 'center',
         paddingHorizontal: 16,
-        paddingBottom: 32,
-        gap: 12,
+        paddingTop: 4,
+        paddingBottom: 120,
     },
 
-    column: {
-        gap: 12,
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        minHeight: 28,
+        marginHorizontal: 4,
+        marginBottom: 6,
     },
 
-    listHeader: {
-        gap: 16,
+    sectionTitle: {
+        color: inventoryColors.muted,
+        fontSize: 13,
+        fontWeight: '600',
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
     },
 
-    summaryGrid: {
+    sectionSpacing: {
+        height: 22,
+    },
+
+    sectionLink: {
+        color: inventoryColors.primary,
+        fontSize: 15,
+        fontWeight: '600',
+    },
+
+    // Grouped white block (rows share one card with thin dividers)
+    group: {
+        borderRadius: 14,
+        overflow: 'hidden',
+        backgroundColor: inventoryColors.card,
+    },
+
+    groupRow: {
+        backgroundColor: inventoryColors.card,
+    },
+
+    groupRowFirst: {
+        borderTopLeftRadius: 14,
+        borderTopRightRadius: 14,
+    },
+
+    groupRowLast: {
+        borderBottomLeftRadius: 14,
+        borderBottomRightRadius: 14,
+    },
+
+    groupRowDivider: {
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: inventoryColors.divider,
+    },
+
+    // Overblik cards
+    cardGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
         rowGap: 12,
+        marginBottom: 22,
     },
 
     summaryCard: {
-        width: '48.5%',
-        minHeight: 96,
-        backgroundColor: inventoryColors.card,
+        width: '48.3%',
+        minHeight: 124,
+        padding: 12,
+        gap: 6,
         borderRadius: 16,
         borderWidth: 2,
         borderColor: inventoryColors.card,
-        padding: 12,
-        gap: 8,
-    },
-
-    summaryCardTablet: {
-        width: '23.5%',
+        backgroundColor: inventoryColors.card,
     },
 
     summaryCardTop: {
@@ -127,157 +276,212 @@ const styles = StyleSheet.create({
     },
 
     summaryCount: {
-        fontSize: 26,
-        fontWeight: '800',
+        marginTop: 2,
+        fontSize: 30,
+        lineHeight: 34,
+        fontWeight: '700',
     },
 
     summaryLabel: {
         color: inventoryColors.text,
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: '600',
     },
 
-    pressed: {
-        opacity: 0.8,
+    // Item rows
+    statusDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
     },
 
-    searchBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        minHeight: 48,
-        backgroundColor: inventoryColors.card,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: inventoryColors.border,
-        paddingLeft: 12,
-    },
-
-    searchInput: {
-        flex: 1,
-        color: inventoryColors.text,
-        fontSize: 16,
-        paddingVertical: 10,
-    },
-
-    clearSearchButton: {
+    thumbnail: {
         width: 44,
         height: 44,
-        alignItems: 'center',
-        justifyContent: 'center',
+        borderRadius: 10,
+        backgroundColor: inventoryColors.controlSoft,
     },
 
-    listTitleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        minHeight: 32,
+    thumbnailSmall: {
+        width: 40,
+        height: 40,
     },
 
-    listTitle: {
-        color: inventoryColors.text,
-        fontSize: 18,
-        fontWeight: '700',
-    },
-
-    showAllText: {
-        color: inventoryColors.primary,
-        fontSize: 15,
-        fontWeight: '700',
+    thumbnailDot: {
+        position: 'absolute',
+        top: -3,
+        right: -3,
+        width: 13,
+        height: 13,
+        borderRadius: 7,
+        borderWidth: 2,
+        borderColor: inventoryColors.card,
     },
 
     itemRow: {
-        backgroundColor: inventoryColors.card,
-        borderRadius: 14,
-        padding: 14,
-        gap: 4,
+        paddingVertical: 12,
+        paddingLeft: 14,
+        paddingRight: 12,
+        gap: 10,
     },
 
-    itemRowTablet: {
-        flex: 1,
-        maxWidth: '49.2%',
-    },
-
-    itemHeader: {
+    itemTop: {
         flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 8,
+        alignItems: 'flex-start',
+        gap: 10,
+    },
+
+    itemDotSlot: {
+        width: 8,
+        paddingTop: 7,
+    },
+
+    itemText: {
+        flex: 1,
+        minWidth: 0,
+        gap: 1,
     },
 
     itemName: {
-        flex: 1,
         color: inventoryColors.text,
-        fontSize: 17,
-        fontWeight: '700',
+        fontSize: 16,
+        lineHeight: 21,
+        fontWeight: '600',
     },
 
-    statusBadge: {
-        borderRadius: 999,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-    },
-
-    statusText: {
-        fontSize: 12,
-        fontWeight: '700',
-    },
-
-    itemMeta: {
-        color: inventoryColors.muted,
+    itemStatus: {
         fontSize: 14,
+        lineHeight: 18,
     },
 
-    itemFooter: {
+    itemStatusStrong: {
+        fontWeight: '600',
+    },
+
+    quantity: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+    },
+
+    quantityValue: {
+        fontSize: 18,
+        lineHeight: 21,
+        fontWeight: '700',
+        fontVariant: ['tabular-nums'],
+    },
+
+    quantityMin: {
+        color: inventoryColors.muted,
+        fontSize: 13,
+        fontWeight: '500',
+    },
+
+    itemActions: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+
+    actionButton: {
+        flex: 1,
+        height: 44,
+        borderRadius: 10,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 8,
-        marginTop: 6,
+        justifyContent: 'center',
+        gap: 6,
     },
 
-    itemNotes: {
-        flex: 1,
-        gap: 2,
+    useButton: {
+        backgroundColor: inventoryColors.controlSoft,
     },
 
-    purchaseText: {
-        color: inventoryColors.blue,
-        fontSize: 13,
+    receiveButton: {
+        backgroundColor: inventoryColors.primarySoft,
+    },
+
+    actionText: {
+        fontSize: 15,
         fontWeight: '600',
     },
 
-    expiryText: {
-        color: inventoryColors.warning,
-        fontSize: 13,
-        fontWeight: '600',
-    },
-
-    stepper: {
+    // Compact rows in the Overblik list
+    overviewRow: {
+        minHeight: 60,
+        paddingVertical: 8,
+        paddingHorizontal: 14,
         flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+
+    overviewAmount: {
+        fontSize: 16,
+        fontWeight: '700',
+        fontVariant: ['tabular-nums'],
+    },
+
+    // Floating "Opret vare" button
+    fab: {
+        position: 'absolute',
+        right: 16,
+        height: 56,
+        paddingLeft: 18,
+        paddingRight: 22,
+        borderRadius: 28,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: inventoryColors.primary,
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+        shadowRadius: 9,
+        shadowOffset: { width: 0, height: 6 },
+        elevation: 6,
+    },
+
+    fabText: {
+        color: '#FFFFFF',
+        fontSize: 17,
+        fontWeight: '600',
+    },
+
+    // Loading / error / empty states
+    centered: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 32,
+        gap: 12,
+    },
+
+    emptyBlock: {
+        paddingVertical: 24,
+        paddingHorizontal: 16,
         alignItems: 'center',
         gap: 4,
     },
 
-    stepperButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: inventoryColors.primarySoft,
-    },
-
-    stepperButtonDisabled: {
-        backgroundColor: inventoryColors.chip,
-    },
-
-    quantityText: {
-        minWidth: 56,
+    messageTitle: {
         color: inventoryColors.text,
+        fontSize: 17,
+        fontWeight: '600',
+        textAlign: 'center',
+    },
+
+    messageText: {
+        color: inventoryColors.muted,
+        fontSize: 15,
+        textAlign: 'center',
+    },
+
+    retryText: {
+        color: inventoryColors.primary,
         fontSize: 16,
         fontWeight: '700',
-        textAlign: 'center',
+    },
+
+    pressed: {
+        opacity: 0.7,
     },
 });
 

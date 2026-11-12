@@ -1,129 +1,78 @@
-﻿import { Pressable, Text, View } from 'react-native';
-import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react-native';
-import styles, { inventoryColors } from '../../styles/inventoryStyles';
-import { getExpiryText, isLowStock, isOutOfStock, needsPurchase } from '../../utils/inventoryUtils';
+import { Pressable, Text, View } from 'react-native';
+import { Minus, Plus } from 'lucide-react-native';
+import InventoryItemMarker from './InventoryItemMarker';
+import styles, { inventoryColors, toneColors } from '../../styles/inventoryStyles';
+import { STATUS_TONES, formatNumber, formatUnit, getItemStatus } from '../../utils/inventoryUtils';
 
-function getStatus(item) {
-    if (isOutOfStock(item)) {
-        return {
-            label: 'Ikke på lager',
-            color: inventoryColors.red,
-            softColor: inventoryColors.redSoft,
-        };
-    }
-
-    if (isLowStock(item)) {
-        return {
-            label: 'Lav beholdning',
-            color: inventoryColors.warning,
-            softColor: inventoryColors.warningSoft,
-        };
-    }
-
-    return {
-        label: 'På lager',
-        color: inventoryColors.primary,
-        softColor: inventoryColors.primarySoft,
-    };
-}
-
-export default function InventoryItemRow({
-    item,
-    isTablet,
-    onChangeQuantity,
-    onAddToShoppingList,
-    onDeleteItem,
-}) {
-    const status = getStatus(item);
-    const expiryText = getExpiryText(item);
-    const canDecrease = item.quantity > 0;
+// One row in the Varer tab: name, status, "stock / min." and the Brug / Modtag buttons.
+export default function InventoryItemRow({ item, isFirst, isLast, onUse, onReceive, onLongPress }) {
+    const status = getItemStatus(item);
+    const canUse = item.quantity > 0;
+    const hasStatus = status.tone !== STATUS_TONES.NONE;
 
     return (
-        <View style={[styles.itemRow, isTablet && styles.itemRowTablet]}>
-            <View style={styles.itemHeader}>
-                <Text style={styles.itemName} numberOfLines={2}>
-                    {item.name}
+        <Pressable
+            onLongPress={() => onLongPress(item)}
+            delayLongPress={500}
+            accessibilityHint="Hold nede for at arkivere varen"
+            style={[
+                styles.groupRow,
+                styles.itemRow,
+                isFirst && styles.groupRowFirst,
+                isLast && styles.groupRowLast,
+                !isFirst && styles.groupRowDivider,
+            ]}>
+            <View style={styles.itemTop}>
+                {item.imageUrl ? (
+                    <InventoryItemMarker imageUrl={item.imageUrl} tone={status.tone} />
+                ) : (
+                    <View style={styles.itemDotSlot}>
+                        <InventoryItemMarker tone={status.tone} />
+                    </View>
+                )}
+
+                <View style={styles.itemText}>
+                    <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+                    <Text
+                        style={[styles.itemStatus, hasStatus && styles.itemStatusStrong, { color: toneColors[status.tone] }]}
+                        numberOfLines={1}>
+                        {status.text}
+                    </Text>
+                </View>
+
+                <Text
+                    style={styles.quantity}
+                    accessibilityLabel={`${formatNumber(item.quantity)} ${formatUnit(item.unit, item.quantity)} på lager, minimum ${formatNumber(item.minQuantity)} ${formatUnit(item.unit, item.minQuantity)}`}>
+                    <Text style={[styles.quantityValue, { color: canUse ? inventoryColors.text : inventoryColors.red }]}>
+                        {formatNumber(item.quantity)}
+                    </Text>
+                    <Text style={styles.quantityMin}>
+                        {` / min. ${formatNumber(item.minQuantity)} ${formatUnit(item.unit, item.minQuantity)}`}
+                    </Text>
                 </Text>
-                <View style={[styles.statusBadge, { backgroundColor: status.softColor }]}>
-                    <Text style={[styles.statusText, { color: status.color }]}>
-                        {status.label}
-                    </Text>
-                </View>
             </View>
 
-            <Text style={styles.itemMeta}>
-                {item.category} · min. {item.minQuantity} {item.unit}
-            </Text>
+            <View style={[styles.itemActions, { paddingLeft: item.imageUrl ? 54 : 18 }]}>
+                <Pressable
+                    onPress={() => onUse(item)}
+                    disabled={!canUse}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Brug 1 ${formatUnit(item.unit, 1)} ${item.name}`}
+                    accessibilityState={{ disabled: !canUse }}
+                    style={({ pressed }) => [styles.actionButton, styles.useButton, pressed && styles.pressed]}>
+                    <Minus size={18} strokeWidth={2.6} color={canUse ? inventoryColors.text : inventoryColors.disabled} />
+                    <Text style={[styles.actionText, { color: canUse ? inventoryColors.text : inventoryColors.disabled }]}>Brug</Text>
+                </Pressable>
 
-            <View style={styles.itemFooter}>
-                <View style={styles.itemNotes}>
-                    {needsPurchase(item) && (
-                        <Text style={styles.purchaseText}>
-                            køb mindst {item.minQuantity - item.quantity} {item.unit}
-                        </Text>
-                    )}
-                    {expiryText && (
-                        <Text style={styles.expiryText}>{expiryText}</Text>
-                    )}
-                </View>
-
-                <View style={styles.stepper}>
-                    <Pressable
-                        style={({ pressed }) => [
-                            styles.stepperButton,
-                            !canDecrease && styles.stepperButtonDisabled,
-                            pressed && styles.pressed,
-                        ]}
-                        onPress={() => onChangeQuantity(item, -1)}
-                        disabled={!canDecrease}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Fjern 1 ${item.unit} ${item.name}`}
-                        accessibilityState={{ disabled: !canDecrease }}>
-                        <Minus
-                            size={20}
-                            color={canDecrease ? inventoryColors.primary : inventoryColors.muted}
-                        />
-                    </Pressable>
-
-                    <Text style={styles.quantityText}>
-                        {item.quantity} {item.unit}
-                    </Text>
-
-                    <Pressable
-                        style={({ pressed }) => [
-                            styles.stepperButton,
-                            pressed && styles.pressed,
-                        ]}
-                        onPress={() => onChangeQuantity(item, 1)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Tilføj 1 ${item.unit} ${item.name}`}>
-                        <Plus size={20} color={inventoryColors.primary} />
-                    </Pressable>
-
-                    <Pressable
-                        style={({ pressed }) => [
-                            styles.stepperButton,
-                            pressed && styles.pressed,
-                        ]}
-                        onPress={() => onAddToShoppingList(item)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Tilføj ${item.name} til indkøbslisten`}>
-                        <ShoppingCart size={18} color={inventoryColors.blue} />
-                    </Pressable>
-
-                    <Pressable
-                        style={({ pressed }) => [
-                            styles.stepperButton,
-                            { backgroundColor: inventoryColors.redSoft },
-                            pressed && styles.pressed,
-                        ]}
-                        onPress={() => onDeleteItem(item)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Slet ${item.name} fra lageret`}>
-                        <Trash2 size={18} color={inventoryColors.red} />
-                    </Pressable>
-                </View>
+                <Pressable
+                    onPress={() => onReceive(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Modtag ${item.name}`}
+                    style={({ pressed }) => [styles.actionButton, styles.receiveButton, pressed && styles.pressed]}>
+                    <Plus size={18} strokeWidth={2.6} color={inventoryColors.primary} />
+                    <Text style={[styles.actionText, { color: inventoryColors.primary }]}>Modtag</Text>
+                </Pressable>
             </View>
-        </View>
+        </Pressable>
     );
 }
