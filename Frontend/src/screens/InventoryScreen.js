@@ -11,6 +11,7 @@ import InventorySummaryCard from '../components/inventory/InventorySummaryCard';
 import ItemDetails from '../components/inventory/ItemDetails';
 import ItemForm, { FORM_MODES, IMAGE_CHANGE } from '../components/inventory/ItemForm';
 import ReceiveForm from '../components/inventory/ReceiveForm';
+import UseForm from '../components/inventory/UseForm';
 import { getErrorMessage } from '../../http/http';
 import {
     addShoppingListItem,
@@ -20,6 +21,7 @@ import {
     deleteItemImage,
     getInventoryCategories,
     getInventoryItems,
+    getItemBatches,
     getShoppingList,
     receiveInventoryBatch,
     updateInventoryItem,
@@ -31,8 +33,6 @@ import {
     STATUS_TONES,
     buildCategoryOptions,
     byUrgency,
-    formatAmount,
-    formatNumber,
     getCategoryName,
     getItemSections,
     getItemStatus,
@@ -69,11 +69,12 @@ const SHEET_MODES = {
     DETAILS: 'details',
     EDIT: 'edit',
     RECEIVE: 'receive',
+    USE: 'use',
     CREATE: 'create',
     CATEGORIES: 'categories',
 };
 
-const ITEM_SHEET_MODES = [SHEET_MODES.DETAILS, SHEET_MODES.EDIT, SHEET_MODES.RECEIVE];
+const ITEM_SHEET_MODES = [SHEET_MODES.DETAILS, SHEET_MODES.EDIT, SHEET_MODES.RECEIVE, SHEET_MODES.USE];
 
 // The shopping list endpoint groups lines by category; the overview needs one flat list
 function flattenShoppingList(result) {
@@ -209,8 +210,9 @@ export default function InventoryScreen({ navigation, route }) {
                 name: item.name,
                 imageUrl: item.imageUrl,
                 status: selectedCard === CARDS.LOW ? LOW_STOCK_STATUS : getItemStatus(item),
-                amount: `${formatNumber(item.quantity)} / min. ${formatAmount(item.minQuantity, item.unit)}`,
-                amountColor: item.quantity > 0 ? inventoryColors.text : inventoryColors.red,
+                quantity: item.quantity,
+                minQuantity: item.minQuantity,
+                unit: item.unit,
             }));
     }, [selectedCard, items]);
 
@@ -226,23 +228,39 @@ export default function InventoryScreen({ navigation, route }) {
     );
 
     // Brug: take one unit out of stock straight away (optimistic update)
-    async function takeOneFromStock(item) {
-        const quantityToRemove = Math.min(item.quantity, 1);
-        if (quantityToRemove <= 0) return;
+    // "Brugt" opens a sheet where the amount (and the batch, with more than one) is chosen
+    function openUse(item) {
+        if (item.quantity <= 0) return;
+        setSheet({ itemId: item.id, mode: SHEET_MODES.USE });
+    }
 
-        const quantity = item.quantity - quantityToRemove;
-        setItems((current) => current.map((other) => (other.id === item.id ? { ...other, quantity } : other)));
+    const sheetItemId = sheet?.itemId;
+    const loadSheetBatches = useCallback(
+        () => getItemBatches(companyId, sheetItemId),
+        [companyId, sheetItemId]
+    );
 
+    // Save "Brugt". Without a batchId the backend takes from the batch that expires first.
+    async function saveUse({ quantity, batchId }) {
         try {
-            await adjustInventoryStock(companyId, item.id, {
+            await adjustInventoryStock(companyId, sheet.itemId, {
                 direction: 'minus',
-                quantity: quantityToRemove,
+                quantity,
+                ...(batchId ? { batchId } : {}),
             });
         } catch (error) {
-            console.error('Could not adjust item quantity:', error);
-            Alert.alert('Fejl', 'Lagerbeholdningen kunne ikke opdateres.');
+            // Shown in the form; reload in case the stock changed meanwhile (e.g. used on another phone)
             loadItems({ silent: true });
+            throw new Error(getErrorMessage(error, {
+                409: 'Der er ikke så meget på lager længere. Opdater og prøv igen.',
+                404: 'Partiet er allerede brugt op.',
+                fallback: 'Lagerbeholdningen kunne ikke opdateres.',
+            }));
         }
+
+        closeSheet();
+        // The amount and the next expiry date may have changed
+        await loadItems({ silent: true });
     }
 
     const openItem = (item) => setSheet({ itemId: item.id, mode: SHEET_MODES.DETAILS });
@@ -260,8 +278,9 @@ export default function InventoryScreen({ navigation, route }) {
         await receiveInventoryBatch(companyId, sheet.itemId, batch);
         await loadItems({ silent: true });
 
-        if (sheet.backToDetails) showDetails();
-        else closeSheet();
+        // Done: close the whole sheet (also when it was opened from the item details) and show the item list
+        closeSheet();
+        setActiveTab(TABS.ITEMS);
     }
 
     async function saveItemChanges(changes, imageChange) {
@@ -516,8 +535,9 @@ export default function InventoryScreen({ navigation, route }) {
                                 name={row.name}
                                 imageUrl={row.imageUrl}
                                 status={row.status}
-                                amount={row.amount}
-                                amountColor={row.amountColor}
+                                quantity={row.quantity}
+                                minQuantity={row.minQuantity}
+                                unit={row.unit}
                                 isFirst={index === 0}
                                 onPress={() => setSheet({ itemId: row.itemId, mode: SHEET_MODES.DETAILS })}
                             />
@@ -552,7 +572,7 @@ export default function InventoryScreen({ navigation, route }) {
                         isFirst={index === 0}
                         isLast={index === section.data.length - 1}
                         onOpen={openItem}
-                        onUse={takeOneFromStock}
+                        onUse={openUse}
                         onReceive={openReceive}
                     />
                 )}
@@ -644,6 +664,14 @@ export default function InventoryScreen({ navigation, route }) {
                         item={sheetItem}
                         onCancel={sheet.backToDetails ? showDetails : closeSheet}
                         onSave={saveReceivedBatch}
+                    />
+                )}
+                {sheetItem && sheet.mode === SHEET_MODES.USE && (
+                    <UseForm
+                        item={sheetItem}
+                        loadBatches={loadSheetBatches}
+                        onCancel={closeSheet}
+                        onUse={saveUse}
                     />
                 )}
             </InventorySheet>

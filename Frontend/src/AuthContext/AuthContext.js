@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import http from '../../http/http';
+import { RemoveExpoToken } from '../utils/notificationUtils';
 const SERVER_IP = process.env.EXPO_PUBLIC_SERVER_IP;
 
 const TOKEN_KEY = 'token';
@@ -67,7 +68,13 @@ export function AuthProvider({ children }) {
         return loginData;
     }
 
-    async function logout() {
+    // removePushToken: stop this device from getting the user's notifications. Skipped after the
+    // account is deleted, because the database already removed its push tokens then.
+    async function logout({ removePushToken = true } = {}) {
+        // Must happen before the login token is cleared, the request needs it. Never throws.
+        if (removePushToken) {
+            await RemoveExpoToken();
+        }
 
         await AsyncStorage.removeItem(TOKEN_KEY);
         await AsyncStorage.removeItem(USER_KEY);
@@ -159,7 +166,8 @@ export function AuthProvider({ children }) {
         }
 
         await http.delete(`/user/${user.id}`);
-        await logout();
+        // Deleting the user also deleted its push tokens (ON DELETE CASCADE)
+        await logout({ removePushToken: false });
     }
 
     const value = useMemo(

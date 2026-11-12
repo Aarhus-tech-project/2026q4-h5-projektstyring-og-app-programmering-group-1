@@ -273,6 +273,10 @@ const styles = StyleSheet.create({
         backgroundColor: dashboardColors.redSoft,
     },
 
+    shoppingChip: {
+        backgroundColor: dashboardColors.primarySoft,
+    },
+
     chipValue: {
         color: dashboardColors.text,
         fontSize: 16,
@@ -294,6 +298,10 @@ const styles = StyleSheet.create({
 
     outOfStockText: {
         color: dashboardColors.red,
+    },
+
+    shoppingText: {
+        color: dashboardColors.primary,
     },
 
     addButton: {

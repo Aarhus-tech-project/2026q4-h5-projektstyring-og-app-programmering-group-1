@@ -102,6 +102,7 @@ func main() {
 	protected.POST("/companies/:companyID/items", routers.CreateInventoryItem)
 	protected.PATCH("/companies/:companyID/items/:itemID", routers.UpdateInventoryItem)
 	protected.DELETE("/companies/:companyID/items/:itemID", routers.DeleteInventoryItem)
+	protected.GET("/companies/:companyID/items/:itemID/batches", routers.GetItemBatches)
 	protected.POST("/companies/:companyID/items/:itemID/batches", routers.ReceiveInventoryBatch)
 	protected.PATCH("/companies/:companyID/items/:itemID/stock", routers.AdjustInventoryStock)
 	protected.GET("/companies/:companyID/items/:itemID/image", routers.GetItemImage)
@@ -143,6 +144,7 @@ func main() {
 		// POST //
 		protected.POST("/company", routers.HandleCreateCompany)
 		protected.POST("/expo-push-token", routers.HandleSavePushToken)
+		protected.DELETE("/expo-push-token", routers.HandleDeletePushToken)
 
 		// DELETE //
 		protected.DELETE("/company/:companyID/userID=:userID", routers.HandleDeleteCompany)
@@ -154,6 +156,7 @@ func main() {
 		protected.POST("/company/:companyID/members/:memberID/promote", middleware.RequireCompanyRole(model.RoleEjer), routers.HandlePromoteMember)
 
 		protected.DELETE("/user/:userID", routers.HandleDeleteAccount)
+		protected.DELETE("/notifications", routers.HandleDeleteAllNotifications)
 		protected.DELETE("/notifications/:notificationID", routers.HandleDeleteNotification)
 	}
 

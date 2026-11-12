@@ -34,6 +34,9 @@ export const toneColors = {
 
 const CONTENT_MAX_WIDTH = 720;
 
+// The header and the lists use 95% of the screen width, centred, so they scale with any device
+const CONTENT_WIDTH = '95%';
+
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
@@ -42,8 +45,7 @@ const styles = StyleSheet.create({
 
     // Header
     header: {
-        width: '100%',
-        maxWidth: CONTENT_MAX_WIDTH,
+        width: CONTENT_WIDTH,
         alignSelf: 'center',
         paddingTop: 4,
         paddingBottom: 12,
@@ -54,8 +56,8 @@ const styles = StyleSheet.create({
     titleRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingLeft: 4,
-        paddingRight: 16,
+        // Pull the back arrow's 44px touch area out a little, so the arrow lines up with the list edge
+        marginLeft: -10,
     },
 
     backButton: {
@@ -91,7 +93,6 @@ const styles = StyleSheet.create({
     // Overblik / Varer switch
     tabs: {
         flexDirection: 'row',
-        marginHorizontal: 16,
         padding: 3,
         gap: 2,
         borderRadius: 12,
@@ -138,7 +139,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
         height: 44,
-        marginHorizontal: 16,
         paddingLeft: 12,
         borderRadius: 12,
         backgroundColor: inventoryColors.control,
@@ -159,7 +159,6 @@ const styles = StyleSheet.create({
     },
 
     chipRow: {
-        paddingHorizontal: 16,
         gap: 8,
     },
 
@@ -187,10 +186,8 @@ const styles = StyleSheet.create({
 
     // Scroll content
     content: {
-        width: '100%',
-        maxWidth: CONTENT_MAX_WIDTH,
+        width: CONTENT_WIDTH,
         alignSelf: 'center',
-        paddingHorizontal: 16,
         paddingTop: 4,
         paddingBottom: 120,
     },
@@ -365,22 +362,35 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
 
-    quantity: {
-        flexDirection: 'row',
-        alignItems: 'baseline',
+    // Right side of a row: "6 kg på lager" with "min. 2 kg" underneath
+    quantityBlock: {
+        alignItems: 'flex-end',
+        gap: 1,
+    },
+
+    quantityLine: {
+        textAlign: 'right',
     },
 
     quantityValue: {
-        fontSize: 18,
+        fontSize: 16,
         lineHeight: 21,
         fontWeight: '700',
         fontVariant: ['tabular-nums'],
     },
 
-    quantityMin: {
+    quantityLabel: {
         color: inventoryColors.muted,
         fontSize: 13,
         fontWeight: '500',
+    },
+
+    quantityMin: {
+        color: inventoryColors.muted,
+        fontSize: 13,
+        lineHeight: 18,
+        fontWeight: '500',
+        textAlign: 'right',
     },
 
     itemActions: {
@@ -489,6 +499,74 @@ const styles = StyleSheet.create({
 
     pressed: {
         opacity: 0.7,
+    },
+
+    // Brugt: quick amount buttons and the batch radio
+    quickAmounts: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+
+    quickAmount: {
+        flex: 1,
+        height: 44,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: inventoryColors.card,
+    },
+
+    quickAmountDisabled: {
+        backgroundColor: inventoryColors.controlSoft,
+    },
+
+    quickAmountTextDisabled: {
+        color: inventoryColors.disabled,
+    },
+
+    radio: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: inventoryColors.disabled,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    radioSelected: {
+        borderColor: inventoryColors.primary,
+        backgroundColor: inventoryColors.primary,
+    },
+
+    // Batch rows (Brugt on an item with more than one batch)
+    batchRow: {
+        minHeight: 64,
+        paddingVertical: 10,
+        paddingLeft: 16,
+        paddingRight: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+
+    batchExpiry: {
+        color: inventoryColors.text,
+        fontSize: 16,
+        lineHeight: 21,
+        fontWeight: '600',
+    },
+
+    batchMeta: {
+        color: inventoryColors.muted,
+        fontSize: 13,
+    },
+
+    batchAmount: {
+        color: inventoryColors.text,
+        fontSize: 17,
+        fontWeight: '700',
+        fontVariant: ['tabular-nums'],
     },
 
     // Indkøbsliste (screen 6)

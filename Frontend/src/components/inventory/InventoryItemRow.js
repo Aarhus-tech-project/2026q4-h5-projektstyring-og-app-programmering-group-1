@@ -2,9 +2,9 @@ import { Pressable, Text, View } from 'react-native';
 import { Minus, Plus } from 'lucide-react-native';
 import InventoryItemMarker from './InventoryItemMarker';
 import styles, { inventoryColors, toneColors } from '../../styles/inventoryStyles';
-import { STATUS_TONES, formatNumber, formatUnit, getItemStatus } from '../../utils/inventoryUtils';
+import { STATUS_TONES, formatAmount, getItemStatus } from '../../utils/inventoryUtils';
 
-// One row in the Varer tab: name, status, "stock / min." and the Brug / Modtag buttons.
+// One row in the Varer tab: name, status, "6 kg på lager / min. 2 kg" and the Brug / Modtag buttons.
 // Tapping anywhere outside the two buttons opens the item.
 export default function InventoryItemRow({ item, isFirst, isLast, onOpen, onUse, onReceive }) {
     const status = getItemStatus(item);
@@ -48,16 +48,19 @@ export default function InventoryItemRow({ item, isFirst, isLast, onOpen, onUse,
                     </Text>
                 </View>
 
-                <Text
-                    style={styles.quantity}
-                    accessibilityLabel={`${formatNumber(item.quantity)} ${formatUnit(item.unit, item.quantity)} på lager, minimum ${formatNumber(item.minQuantity)} ${formatUnit(item.unit, item.minQuantity)}`}>
-                    <Text style={[styles.quantityValue, { color: canUse ? inventoryColors.text : inventoryColors.red }]}>
-                        {formatNumber(item.quantity)}
+                {/* "6 kg på lager" with "min. 2 kg" underneath, so it is clear which number is which */}
+                <View
+                    style={styles.quantityBlock}
+                    accessible
+                    accessibilityLabel={`${formatAmount(item.quantity, item.unit)} på lager, minimum ${formatAmount(item.minQuantity, item.unit)}`}>
+                    <Text style={styles.quantityLine}>
+                        <Text style={[styles.quantityValue, { color: canUse ? inventoryColors.text : inventoryColors.red }]}>
+                            {formatAmount(item.quantity, item.unit)}
+                        </Text>
+                        <Text style={styles.quantityLabel}> på lager</Text>
                     </Text>
-                    <Text style={styles.quantityMin}>
-                        {` / min. ${formatNumber(item.minQuantity)} ${formatUnit(item.unit, item.minQuantity)}`}
-                    </Text>
-                </Text>
+                    <Text style={styles.quantityMin}>{`min. ${formatAmount(item.minQuantity, item.unit)}`}</Text>
+                </View>
             </View>
 
             <View style={[styles.itemActions, { paddingLeft: item.imageUrl ? 54 : 18 }]}>
@@ -65,11 +68,12 @@ export default function InventoryItemRow({ item, isFirst, isLast, onOpen, onUse,
                     onPress={() => onUse(item)}
                     disabled={!canUse}
                     accessibilityRole="button"
-                    accessibilityLabel={`Brug 1 ${formatUnit(item.unit, 1)} ${item.name}`}
+                    accessibilityLabel={`Brugt ${item.name}`}
+                    accessibilityHint="Åbner et vindue, hvor du vælger hvor meget der er brugt"
                     accessibilityState={{ disabled: !canUse }}
                     style={({ pressed }) => [styles.actionButton, styles.useButton, pressed && styles.pressed]}>
                     <Minus size={18} strokeWidth={2.6} color={canUse ? inventoryColors.text : inventoryColors.disabled} />
-                    <Text style={[styles.actionText, { color: canUse ? inventoryColors.text : inventoryColors.disabled }]}>Brug</Text>
+                    <Text style={[styles.actionText, { color: canUse ? inventoryColors.text : inventoryColors.disabled }]}>Brugt</Text>
                 </Pressable>
 
                 <Pressable

@@ -92,3 +92,55 @@ func HandleSavePushToken(c *gin.Context) {
 		"data":    gin.H{},
 	})
 }
+
+type DeletePushTokenReq struct {
+	Token string `json:"token" binding:"required"`
+}
+
+// DELETE /v1/expo-push-token
+// Called when the user logs out, so the device stops receiving their notifications.
+// Only removes the token if it belongs to the logged-in user. Removing a token that is
+// already gone is not an error, so the app can call this on every logout.
+func HandleDeletePushToken(c *gin.Context) {
+	var req DeletePushTokenReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Invalid request data",
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	token := strings.TrimSpace(req.Token)
+	if !expoPushTokenPattern.MatchString(token) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Invalid Expo push token",
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	_, err := database.DB.ExecContext(
+		c.Request.Context(),
+		`DELETE FROM push_tokens WHERE expo_push_token = $1 AND user_id = $2::uuid`,
+		token,
+		c.GetString("userID"),
+	)
+	if err != nil {
+		log.Println("Delete push token error:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Could not remove push token",
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Push token removed",
+		"data":    gin.H{},
+	})
+}

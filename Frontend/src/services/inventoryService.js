@@ -37,6 +37,12 @@ export async function deleteInventoryItem(companyId, itemId) {
     return getResponseData(response);
 }
 
+// Batches of an item that still have stock, the one that expires first first
+export async function getItemBatches(companyId, itemId) {
+    const response = await http.get(`/companies/${companyId}/items/${itemId}/batches`);
+    return getResponseData(response);
+}
+
 // asset comes from expo-image-picker. Sent as multipart and stored as a blob in the database (like the avatar).
 export async function uploadItemImage(companyId, itemId, asset) {
     const mimeType = asset.mimeType || 'image/jpeg';

@@ -9,25 +9,17 @@ import {
     formatAmount,
     formatExpiry,
     getCategoryName,
-    getDaysUntilExpiry,
+    getExpiryTone,
     isLowStock,
     isOutOfStock,
 } from '../../utils/inventoryUtils';
-
-function getExpiryTone(item) {
-    const days = getDaysUntilExpiry(item);
-    if (days === null) return STATUS_TONES.NONE;
-    if (days <= 1) return STATUS_TONES.RED;
-    if (days <= 7) return STATUS_TONES.VIOLET;
-    return STATUS_TONES.NONE;
-}
 
 // Screen 2: what you see after tapping an item.
 // The minimum only decides when the item counts as "Lav beholdning"; it does not decide how much to buy.
 // Adding to the shopping list starts at 1, and the amount is then adjusted with − / +.
 export default function ItemDetails({ item, shoppingEntry, isAddingToList, onEdit, onReceive, onAddToShoppingList, onChangeShoppingQuantity }) {
     const expiry = formatExpiry(item);
-    const expiryTone = getExpiryTone(item);
+    const expiryTone = getExpiryTone(item.nextExpiryDate);
     const stockColor = isOutOfStock(item) ? inventoryColors.red : isLowStock(item) ? inventoryColors.amber : inventoryColors.text;
     const imageSource = useItemImageSource(item.imageUrl);
     const listQuantity = shoppingEntry ? Number(shoppingEntry.quantity) : 0;

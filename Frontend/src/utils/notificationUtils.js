@@ -74,6 +74,8 @@ async function registerForPushNotificationsAsync() {
 // Home mounts many times during a session.
 let savedTokenForUser = null;
 let saveInFlight = null;
+// The token this device registered, so it can be removed again on logout
+let savedToken = null;
 
 /**
  * Registers for push and uploads the token. Resolves true when a token was saved (or already saved this session).
@@ -95,6 +97,7 @@ async function SaveExpoToken(userID, { force = false } = {}) {
         });
         if(res.data.success){
           savedTokenForUser = userID;
+          savedToken = token;
           console.debug(res.data.message);
           return true;
         }
@@ -111,6 +114,46 @@ async function SaveExpoToken(userID, { force = false } = {}) {
   return saveInFlight;
 }
 
+// The device's push token without asking for permission (used on logout).
+// Returns null when notifications are not allowed or the token cannot be read.
+async function getExistingExpoToken() {
+  if (savedToken) return savedToken;
+  if (!Device.isDevice) return null;
+
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return null;
+
+    const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+    if (!projectId) return null;
+
+    return (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Removes this device's push token from the logged-in user, so the device stops receiving their
+ * notifications after logout. Must run while the user is still logged in (the request needs the token).
+ * Never throws: logging out must work even without internet.
+ */
+async function RemoveExpoToken() {
+  const token = await getExistingExpoToken();
+
+  // Forget it locally either way, so the next user on this device registers again
+  savedToken = null;
+  savedTokenForUser = null;
+
+  if (!token) return;
+
+  try {
+    await http.delete('/expo-push-token', { data: { token }, timeout: 5000 });
+  } catch (error) {
+    console.warn('Could not remove push token on logout:', error?.message);
+  }
+}
+
 /** "granted" | "denied" | "undetermined" | "unavailable" (simulators and emulators can't receive pushes). */
 async function getNotificationPermission() {
   if (!Device.isDevice) return "unavailable";
@@ -125,5 +168,6 @@ async function getNotificationPermission() {
 export {
     registerForPushNotificationsAsync,
     SaveExpoToken,
+    RemoveExpoToken,
     getNotificationPermission
 }

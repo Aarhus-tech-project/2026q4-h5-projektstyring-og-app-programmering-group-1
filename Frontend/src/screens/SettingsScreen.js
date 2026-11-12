@@ -11,7 +11,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 const comingSoon = () => Alert.alert('Kommer snart', 'Denne funktion er ikke klar endnu.');
 
 export default function SettingsScreen({ navigation }) {
-    const { changePassword, user } = useAuth();
+    const { changePassword, user, logout: logoutUser } = useAuth();
     const [isChangePasswordVisible, setIsChangePasswordVisible] = useState(false);
     const [isPasswordChangedVisible, setIsPasswordChangedVisible] = useState(false);
 
@@ -36,7 +36,10 @@ export default function SettingsScreen({ navigation }) {
         }
     };
 
-    const logout = () => {
+    // Really log out (clears the saved login and stops this device's push notifications),
+    // then go to the login screen. Before, this only navigated and the user stayed logged in.
+    const logout = async () => {
+        await logoutUser();
         navigation.dispatch(
             CommonActions.reset({
                 index: 0,

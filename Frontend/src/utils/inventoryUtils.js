@@ -14,12 +14,13 @@ export const isOutOfStock = (item) => item.quantity === 0;
 export const isLowStock = (item) => item.quantity > 0 &&item.quantity <= item.minQuantity;
 export const needsPurchase = (item) => item.quantity < item.minQuantity;
 
-export function getDaysUntilExpiry(item) {
-    if (!item.nextExpiryDate) {
+// Days from today until a 'YYYY-MM-DD' date (negative = in the past), or null without a date
+export function getDaysUntilDate(dateString) {
+    if (!dateString) {
         return null;
     }
 
-    const [year, month, day] = item.nextExpiryDate.split('-').map(Number);
+    const [year, month, day] = dateString.split('-').map(Number);
     const expiry = new Date(year, month - 1, day);
 
     const today = new Date();
@@ -27,6 +28,8 @@ export function getDaysUntilExpiry(item) {
 
     return Math.round((expiry - today) / MS_PER_DAY);
 }
+
+export const getDaysUntilExpiry = (item) => getDaysUntilDate(item.nextExpiryDate);
 
 export function isExpiringSoon(item) {
     const days = getDaysUntilExpiry(item);
@@ -127,19 +130,36 @@ export const needsAttention = (item) => getItemStatus(item).level > 0;
 
 const MONTHS = ['jan.', 'feb.', 'mar.', 'apr.', 'maj', 'jun.', 'jul.', 'aug.', 'sep.', 'okt.', 'nov.', 'dec.'];
 
-// "15. nov. · om 3 dage" for the item details; null when the item has no batch with an expiry date
-export function formatExpiry(item) {
-    const days = getDaysUntilExpiry(item);
+// "15. nov." for a 'YYYY-MM-DD' date
+export function formatShortDate(dateString) {
+    const [, month, day] = dateString.split('-').map(Number);
+    return `${day}. ${MONTHS[month - 1]}`;
+}
+
+// "15. nov. · om 3 dage" for a 'YYYY-MM-DD' expiry date; null without a date
+export function formatExpiryDate(dateString) {
+    const days = getDaysUntilDate(dateString);
     if (days === null) return null;
 
-    const [, month, day] = item.nextExpiryDate.split('-').map(Number);
-    const date = `${day}. ${MONTHS[month - 1]}`;
+    const date = formatShortDate(dateString);
 
     if (days < -1) return `${date} · udløbet for ${-days} dage siden`;
     if (days === -1) return `${date} · udløbet i går`;
     if (days === 0) return `${date} · i dag`;
     if (days === 1) return `${date} · i morgen`;
     return `${date} · om ${days} dage`;
+}
+
+// The item's next expiry date, formatted as above (item details)
+export const formatExpiry = (item) => formatExpiryDate(item.nextExpiryDate);
+
+// Colour for an expiry date: red today/tomorrow/expired, violet within EXPIRY_WARNING_DAYS
+export function getExpiryTone(dateString) {
+    const days = getDaysUntilDate(dateString);
+    if (days === null) return STATUS_TONES.NONE;
+    if (days <= 1) return STATUS_TONES.RED;
+    if (days <= EXPIRY_WARNING_DAYS) return STATUS_TONES.VIOLET;
+    return STATUS_TONES.NONE;
 }
 export function getInventoryCounts(items) {
     return {
