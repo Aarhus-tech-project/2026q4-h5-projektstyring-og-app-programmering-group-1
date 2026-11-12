@@ -5,7 +5,7 @@ CREATE TABLE notifications (
     company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     batch_id  UUID REFERENCES batches(id) ON DELETE SET NULL,
     item_id   UUID REFERENCES items(id) ON DELETE SET NULL,
-    type      TEXT NOT NULL CHECK (type IN ('udloeb', 'lav_beholdning')),
+    type      TEXT NOT NULL CHECK (type IN ('udloeb', 'lav_beholdning', 'udsolgt', 'indkoebsliste')),
     message   TEXT NOT NULL DEFAULT '',
     sent_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     read_at   TIMESTAMPTZ,

@@ -1,26 +1,30 @@
 import { Pressable, Text, View } from 'react-native';
-import styles from '../../styles/inventoryStyles';
+import { ChevronRight } from 'lucide-react-native';
+import styles, { inventoryColors } from '../../styles/inventoryStyles';
 
-export default function InventorySummaryCard({ icon: Icon, label, count, color, softColor, isActive, isTablet, onPress }) {
+// One of the four Overblik cards. The selected card decides which items the list below shows.
+// opensScreen: the card navigates to another screen instead (shown with a ›), so it is never "selected".
+export default function InventorySummaryCard({ icon: Icon, label, count, color, softColor, isSelected, opensScreen = false, onPress }) {
     return (
         <Pressable
-            style={({ pressed }) => [
-                styles.summaryCard,
-                isTablet && styles.summaryCardTablet,
-                isActive && { borderColor: color },
-                pressed && styles.pressed,
-            ]}
             onPress={onPress}
             accessibilityRole="button"
             accessibilityLabel={`${label}: ${count} varer`}
-            accessibilityState={{ selected: isActive }}>
+            accessibilityHint={opensScreen ? `Åbner ${label.toLowerCase()}` : undefined}
+            accessibilityState={opensScreen ? undefined : { selected: isSelected }}
+            style={({ pressed }) => [
+                styles.summaryCard,
+                isSelected && { borderColor: color, backgroundColor: softColor },
+                pressed && styles.pressed,
+            ]}>
             <View style={styles.summaryCardTop}>
-                <View style={[styles.summaryIcon, { backgroundColor: softColor }]}>
+                <View style={[styles.summaryIcon, { backgroundColor: isSelected ? inventoryColors.card : softColor }]}>
                     <Icon size={20} color={color} />
                 </View>
-                <Text style={[styles.summaryCount, { color }]}>{count}</Text>
+                {opensScreen && <ChevronRight size={20} color={inventoryColors.disabled} />}
             </View>
 
+            <Text style={[styles.summaryCount, { color: count > 0 ? color : inventoryColors.text }]}>{count}</Text>
             <Text style={styles.summaryLabel}>{label}</Text>
         </Pressable>
     );

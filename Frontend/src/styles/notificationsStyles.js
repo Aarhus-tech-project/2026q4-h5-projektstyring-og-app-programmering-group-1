@@ -1,13 +1,20 @@
 import { StyleSheet } from 'react-native';
 import colors from '../constants/colors';
+import { inventoryColors } from './inventoryStyles';
 
+// Status colours are shared with the Lager screen and the dashboard:
+// violet = udløber snart, amber = lav beholdning, red = ikke på lager, green = indkøbsliste
 export const notificationColors = {
     background: '#F5F6F8',
     card: '#FFFFFF',
-    primary: colors.primary,
-    primarySoft: '#ECFDF5',
-    red: '#DC2626',
-    redSoft: '#FEE2E2',
+    primary: inventoryColors.primary,
+    primarySoft: inventoryColors.primarySoft,
+    red: inventoryColors.red,
+    redSoft: inventoryColors.redSoft,
+    amber: inventoryColors.amber,
+    amberSoft: inventoryColors.amberSoft,
+    violet: inventoryColors.violet,
+    violetSoft: inventoryColors.violetSoft,
     orange: colors.alternatives.orange,
     orangeSoft: '#FFF1E6',
     text: '#111827',
@@ -27,9 +34,28 @@ const styles = StyleSheet.create({
         paddingBottom: 8,
     },
 
+    // Back arrow on the left, "Ryd alle" on the right
+    headerTopRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+    },
+
     backButton: {
         alignSelf: 'flex-start',
-        marginBottom: 8,
+    },
+
+    clearAllButton: {
+        minHeight: 44,
+        paddingHorizontal: 4,
+        justifyContent: 'center',
+    },
+
+    clearAllText: {
+        color: notificationColors.red,
+        fontSize: 16,
+        fontWeight: '600',
     },
 
     title: {

@@ -1,377 +1,598 @@
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ActivityIndicator, Alert, FlatList, Modal, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { CalendarClock, ChevronLeft, PackageX, Plus, Search, ShoppingCart, TrendingDown, X } from 'lucide-react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, SectionList, Text, TextInput, View } from 'react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { ChevronLeft, CircleX, Clock, PackageX, Plus, Search, ShoppingCart, TrendingDown } from 'lucide-react-native';
+import CategoryManager from '../components/inventory/CategoryManager';
 import InventoryItemRow from '../components/inventory/InventoryItemRow';
+import InventoryOverviewRow from '../components/inventory/InventoryOverviewRow';
+import InventorySheet from '../components/inventory/InventorySheet';
 import InventorySummaryCard from '../components/inventory/InventorySummaryCard';
-import ConfirmationModal from '../components/ConfirmationModal';
-import { addShoppingListItem, adjustInventoryStock, createInventoryCategory, createInventoryItem, deleteInventoryItem, getInventoryCategories, getInventoryItems, getShoppingList, receiveInventoryBatch } from '../services/inventoryService';
+import ItemDetails from '../components/inventory/ItemDetails';
+import ItemForm, { FORM_MODES, IMAGE_CHANGE } from '../components/inventory/ItemForm';
+import ReceiveForm from '../components/inventory/ReceiveForm';
+import UseForm from '../components/inventory/UseForm';
+import { getErrorMessage } from '../../http/http';
+import {
+    addShoppingListItem,
+    adjustInventoryStock,
+    createInventoryCategory,
+    createInventoryItem,
+    deleteItemImage,
+    getInventoryCategories,
+    getInventoryItems,
+    getItemBatches,
+    getShoppingList,
+    receiveInventoryBatch,
+    updateInventoryItem,
+    updateShoppingListItem,
+    uploadItemImage,
+} from '../services/inventoryService';
 import styles, { inventoryColors } from '../styles/inventoryStyles';
-import { FILTERS, getInventoryCounts, getVisibleItems } from '../utils/inventoryUtils';
+import {
+    STATUS_TONES,
+    buildCategoryOptions,
+    byUrgency,
+    getCategoryName,
+    getItemSections,
+    getItemStatus,
+    isExpiringSoon,
+    isLowStock,
+    isOutOfStock,
+    needsAttention,
+} from '../utils/inventoryUtils';
 
+const TABS = {
+    OVERVIEW: 'overview',
+    ITEMS: 'items',
+};
 
-const TABLET_WIDTH = 768;
-const PIN_DURATION = 5000;
+const CARDS = {
+    SHOPPING: 'shopping',
+    LOW: 'low',
+    OUT: 'out',
+    EXPIRING: 'expiring',
+};
 
-function getLocalDateString() {
-    const date = new Date();
-    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
-    return date.toISOString().slice(0, 10);
-}
-
+// The Indkøbsliste card opens the shopping list screen; the other cards filter the list under the cards
 const SUMMARY_CARDS = [
-    { filter: FILTERS.LOW, label: 'Lav beholdning', icon: TrendingDown, color: inventoryColors.warning, softColor: inventoryColors.warningSoft },
-    { filter: FILTERS.OUT, label: 'Ikke på lager', icon: PackageX, color: inventoryColors.red, softColor: inventoryColors.redSoft },
-    { filter: FILTERS.SHOPPING, label: 'Indkøbsliste', icon: ShoppingCart, color: inventoryColors.blue, softColor: inventoryColors.blueSoft },
-    { filter: FILTERS.EXPIRING, label: 'Udløber snart', icon: CalendarClock, color: inventoryColors.warning, softColor: inventoryColors.warningSoft },
+    { key: CARDS.LOW, label: 'Lav beholdning', icon: TrendingDown, color: inventoryColors.amber, softColor: inventoryColors.amberSoft },
+    { key: CARDS.SHOPPING, label: 'Indkøbsliste', icon: ShoppingCart, color: inventoryColors.primary, softColor: inventoryColors.primarySoft },
+    { key: CARDS.OUT, label: 'Ikke på lager', icon: PackageX, color: inventoryColors.red, softColor: inventoryColors.redSoft },
+    { key: CARDS.EXPIRING, label: 'Udløber snart', icon: Clock, color: inventoryColors.violet, softColor: inventoryColors.violetSoft },
 ];
 
-const LIST_TITLES = {
-    [FILTERS.ALL]: 'Alle varer',
-    [FILTERS.LOW]: 'Lav beholdning',
-    [FILTERS.OUT]: 'Ikke på lager',
-    [FILTERS.SHOPPING]: 'Indkøbsliste',
-    [FILTERS.EXPIRING]: 'Udløber snart',
+const LOW_STOCK_STATUS = { tone: STATUS_TONES.AMBER, text: 'Lav beholdning' };
+
+// What the bottom sheet is showing. DETAILS, EDIT and RECEIVE belong to one item; CREATE and CATEGORIES do not.
+const SHEET_MODES = {
+    DETAILS: 'details',
+    EDIT: 'edit',
+    RECEIVE: 'receive',
+    USE: 'use',
+    CREATE: 'create',
+    CATEGORIES: 'categories',
 };
+
+const ITEM_SHEET_MODES = [SHEET_MODES.DETAILS, SHEET_MODES.EDIT, SHEET_MODES.RECEIVE, SHEET_MODES.USE];
+
+// The shopping list endpoint groups lines by category; the overview needs one flat list
+function flattenShoppingList(result) {
+    if (!Array.isArray(result)) return [];
+
+    return result.flatMap((category) =>
+        (category.items || []).map((entry) => ({ ...entry, categoryName: category.categoryName }))
+    );
+}
 
 export default function InventoryScreen({ navigation, route }) {
     const { companyId, companyName } = route.params;
-
-    const { width } = useWindowDimensions();
-    const isTablet = width >= TABLET_WIDTH;
+    const insets = useSafeAreaInsets();
 
     const [items, setItems] = useState([]);
-    const [shoppingListCount, setShoppingListCount] = useState(0);
-    const [isLoading, setIsLoading] = useState(true);
-    const [hasError, setHasError] = useState(false);
-    const [activeFilter, setActiveFilter] = useState(FILTERS.ALL);
-    const [search, setSearch] = useState('');
-    const [pinnedIds, setPinnedIds] = useState([]);
-    const pinTimers = useRef({});
-    const [receivingItem, setReceivingItem] = useState(null);
-    const [receiptQuantity, setReceiptQuantity] = useState('1');
-    const [purchaseDate, setPurchaseDate] = useState(getLocalDateString());
-    const [expiryDate, setExpiryDate] = useState('');
-    const [isSavingReceipt, setIsSavingReceipt] = useState(false);
-    const [isCreateItemModalVisible, setIsCreateItemModalVisible] = useState(false);
-    const [newItemName, setNewItemName] = useState('');
-    const [newItemUnit, setNewItemUnit] = useState('stk');
-    const [newItemMinQuantity, setNewItemMinQuantity] = useState('0');
+    const [shoppingItems, setShoppingItems] = useState([]);
     const [categories, setCategories] = useState([]);
-    const [selectedCategoryId, setSelectedCategoryId] = useState('');
-    const [newCategoryName, setNewCategoryName] = useState('');
-    const [isSavingItem, setIsSavingItem] = useState(false);
-    const [isSavingCategory, setIsSavingCategory] = useState(false);
-    const [itemToDelete, setItemToDelete] = useState(null);
-    const [isDeletingItem, setIsDeletingItem] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [hasError, setHasError] = useState(false);
+    const hasLoadedItems = useRef(false);
 
-    const loadItems = useCallback(async () => {
-        setIsLoading(true);
-        setHasError(false);
+    const [activeTab, setActiveTab] = useState(TABS.OVERVIEW);
+    const [selectedCard, setSelectedCard] = useState(CARDS.LOW);
+    const [search, setSearch] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState(null);
+
+    // { itemId, mode, backToDetails } — backToDetails: return to the item details after receiving/editing
+    const [sheet, setSheet] = useState(null);
+    const [isAddingToList, setIsAddingToList] = useState(false);
+
+    // silent = refresh in the background without replacing the screen with a spinner
+    const loadItems = useCallback(async ({ silent = false } = {}) => {
+        if (!silent) {
+            setIsLoading(true);
+            setHasError(false);
+        }
 
         try {
             setItems(await getInventoryItems(companyId));
+            hasLoadedItems.current = true;
+            setHasError(false);
         } catch (error) {
             console.error('Could not load inventory: ', error);
-            setHasError(true);
+            if (!silent) setHasError(true);
         } finally {
             setIsLoading(false);
         }
     }, [companyId]);
 
-    useEffect(() => {
-        loadItems();
-    }, [loadItems]);
-
-    useEffect(() => {
-        return () => {
-            Object.values(pinTimers.current).forEach((timer) => clearTimeout(timer));
-            pinTimers.current = {};
-            setPinnedIds([]);
-        };
-    }, [activeFilter]);
-
-    const loadShoppingListCount = useCallback(async () => {
+    const loadShoppingList = useCallback(async () => {
         try {
-            const categories = await getShoppingList(companyId);
-            const count = Array.isArray(categories)
-                ? categories.reduce((total, category) => total + (category.items?.length || 0), 0)
-                : 0;
-            setShoppingListCount(count);
+            setShoppingItems(flattenShoppingList(await getShoppingList(companyId)));
         } catch (error) {
             console.error('Could not load shopping list:', error);
         }
     }, [companyId]);
 
-    useEffect(() => {
-        loadShoppingListCount();
-    }, [loadShoppingListCount]);
-
-    async function addItemToShoppingList(item) {
+    const loadCategories = useCallback(async () => {
         try {
-            await addShoppingListItem(companyId, item.id, 1);
-            await loadShoppingListCount();
-            Alert.alert('Tilføjet', `${item.name} er tilføjet til indkøbslisten.`);
+            const result = await getInventoryCategories(companyId);
+            setCategories(Array.isArray(result) ? result : []);
         } catch (error) {
-            Alert.alert('Fejl', error.message || 'Varen kunne ikke tilføjes til indkøbslisten.');
+            console.error('Could not load categories:', error);
         }
-    }
-    const counts = useMemo(() => getInventoryCounts(items), [items]);
+    }, [companyId]);
 
-    const visibleItems = useMemo(
-        () => getVisibleItems(items, activeFilter, search, pinnedIds),
-        [items, activeFilter, search, pinnedIds]
+    // Reload when the screen comes back into view, e.g. after the shopping list was changed
+    useFocusEffect(
+        useCallback(() => {
+            loadItems({ silent: hasLoadedItems.current });
+            loadShoppingList();
+            loadCategories();
+        }, [loadItems, loadShoppingList, loadCategories])
     );
 
-    function toggleFilter(filter) {
-        setActiveFilter(activeFilter === filter ? FILTERS.ALL : filter);
+    async function refresh() {
+        setIsRefreshing(true);
+        await Promise.all([loadItems({ silent: true }), loadShoppingList(), loadCategories()]);
+        setIsRefreshing(false);
     }
 
-    function pinItem(itemId) {
-        clearTimeout(pinTimers.current[itemId]);
+    const itemsById = useMemo(
+        () => Object.fromEntries(items.map((item) => [item.id, item])),
+        [items]
+    );
 
-        pinTimers.current[itemId] = setTimeout(() => {
-            delete pinTimers.current[itemId];
-            setPinnedIds((current) => current.filter((id) => id !== itemId));
-        }, PIN_DURATION);
+    const shoppingByItemId = useMemo(
+        () => Object.fromEntries(shoppingItems.map((entry) => [entry.itemId, entry])),
+        [shoppingItems]
+    );
 
-        setPinnedIds((current) => (current.includes(itemId) ? current : [...current, itemId]));
+    // Always read the item from the latest list, so the sheet shows fresh numbers after Brug / Modtag
+    const sheetItem = sheet?.itemId ? itemsById[sheet.itemId] : null;
+    const isItemSheet = sheet !== null && ITEM_SHEET_MODES.includes(sheet.mode);
+    // An item sheet closes by itself if the item disappears (e.g. archived on another phone)
+    const isSheetVisible = sheet !== null && (!isItemSheet || sheetItem != null);
+
+    const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories]);
+
+    const itemCountByCategory = useMemo(() => {
+        const counts = {};
+        items.forEach((item) => {
+            const name = getCategoryName(item);
+            counts[name] = (counts[name] ?? 0) + 1;
+        });
+        return counts;
+    }, [items]);
+
+    const attentionCount = useMemo(() => items.filter(needsAttention).length, [items]);
+
+    const cardCounts = useMemo(() => ({
+        [CARDS.SHOPPING]: shoppingItems.length,
+        [CARDS.LOW]: items.filter(isLowStock).length,
+        [CARDS.OUT]: items.filter(isOutOfStock).length,
+        [CARDS.EXPIRING]: items.filter(isExpiringSoon).length,
+    }), [items, shoppingItems]);
+
+    // Rows shown under the cards for the selected card
+    const overviewRows = useMemo(() => {
+        const matches = {
+            [CARDS.LOW]: isLowStock,
+            [CARDS.OUT]: isOutOfStock,
+            [CARDS.EXPIRING]: isExpiringSoon,
+        }[selectedCard];
+
+        return items
+            .filter(matches)
+            .sort(byUrgency)
+            .map((item) => ({
+                key: item.id,
+                itemId: item.id,
+                name: item.name,
+                imageUrl: item.imageUrl,
+                status: selectedCard === CARDS.LOW ? LOW_STOCK_STATUS : getItemStatus(item),
+                quantity: item.quantity,
+                minQuantity: item.minQuantity,
+                unit: item.unit,
+            }));
+    }, [selectedCard, items]);
+
+    const categoryNames = useMemo(() => {
+        const names = new Set(categories.map((category) => category.name));
+        items.forEach((item) => names.add(getCategoryName(item)));
+        return [...names].sort((a, b) => a.localeCompare(b, 'da'));
+    }, [categories, items]);
+
+    const sections = useMemo(
+        () => getItemSections(items, selectedCategory, search),
+        [items, selectedCategory, search]
+    );
+
+    // Brug: take one unit out of stock straight away (optimistic update)
+    // "Brugt" opens a sheet where the amount (and the batch, with more than one) is chosen
+    function openUse(item) {
+        if (item.quantity <= 0) return;
+        setSheet({ itemId: item.id, mode: SHEET_MODES.USE });
     }
 
-    function openReceiveDialog(item) {
-        setReceivingItem(item);
-        setReceiptQuantity('1');
-        setPurchaseDate(getLocalDateString());
-        setExpiryDate('');
+    const sheetItemId = sheet?.itemId;
+    const loadSheetBatches = useCallback(
+        () => getItemBatches(companyId, sheetItemId),
+        [companyId, sheetItemId]
+    );
+
+    // Save "Brugt". Without a batchId the backend takes from the batch that expires first.
+    async function saveUse({ quantity, batchId }) {
+        try {
+            await adjustInventoryStock(companyId, sheet.itemId, {
+                direction: 'minus',
+                quantity,
+                ...(batchId ? { batchId } : {}),
+            });
+        } catch (error) {
+            // Shown in the form; reload in case the stock changed meanwhile (e.g. used on another phone)
+            loadItems({ silent: true });
+            throw new Error(getErrorMessage(error, {
+                409: 'Der er ikke så meget på lager længere. Opdater og prøv igen.',
+                404: 'Partiet er allerede brugt op.',
+                fallback: 'Lagerbeholdningen kunne ikke opdateres.',
+            }));
+        }
+
+        closeSheet();
+        // The amount and the next expiry date may have changed
+        await loadItems({ silent: true });
     }
 
-    async function changeQuantity(item, change) {
-        if (change > 0) {
-            openReceiveDialog(item);
+    const openItem = (item) => setSheet({ itemId: item.id, mode: SHEET_MODES.DETAILS });
+    // Stable so the sheet's drag handler is not rebuilt on every render
+    const closeSheet = useCallback(() => setSheet(null), []);
+
+    // From the row's "Modtag" button the sheet closes after saving; from the details it goes back to them
+    const openReceive = (item, backToDetails = false) =>
+        setSheet({ itemId: item.id, mode: SHEET_MODES.RECEIVE, backToDetails });
+
+    const showDetails = () => setSheet((current) => current && { ...current, mode: SHEET_MODES.DETAILS });
+
+    async function saveReceivedBatch(batch) {
+        // The form shows the error itself, so let it throw
+        await receiveInventoryBatch(companyId, sheet.itemId, batch);
+        await loadItems({ silent: true });
+
+        // Done: close the whole sheet (also when it was opened from the item details) and show the item list
+        closeSheet();
+        setActiveTab(TABS.ITEMS);
+    }
+
+    async function saveItemChanges(changes, imageChange) {
+        const itemId = sheet.itemId;
+
+        try {
+            await updateInventoryItem(companyId, itemId, changes);
+        } catch (error) {
+            Alert.alert('Fejl', error.message || 'Ændringerne kunne ikke gemmes.');
             return;
         }
 
-        const quantityToRemove = Math.min(item.quantity, Math.abs(change));
-        if (quantityToRemove <= 0) return;
+        try {
+            if (imageChange?.type === IMAGE_CHANGE.NEW) {
+                await uploadItemImage(companyId, itemId, imageChange.asset);
+            } else if (imageChange?.type === IMAGE_CHANGE.REMOVE) {
+                await deleteItemImage(companyId, itemId);
+            }
+        } catch (error) {
+            Alert.alert(
+                'Billedet blev ikke gemt',
+                getErrorMessage(error, {
+                    413: 'Ændringerne er gemt, men billedet er for stort. Vælg et billede under 5 MB.',
+                    415: 'Ændringerne er gemt, men billedet skal være JPEG, PNG eller WebP.',
+                    fallback: 'Ændringerne er gemt, men billedet kunne ikke gemmes. Prøv igen.',
+                }),
+            );
+        }
 
-        pinItem(item.id);
-        const quantity = Math.max(0, item.quantity - quantityToRemove);
+        await Promise.all([loadItems({ silent: true }), loadShoppingList()]);
+        showDetails();
+    }
 
-        setItems((current) =>
-            current.map((other) => (other.id === item.id ? { ...other, quantity } : other))
+    async function createCategory(name) {
+        const category = await createInventoryCategory(companyId, name);
+        setCategories((current) =>
+            current.some((entry) => entry.id === category.id) ? current : [...current, category]
+        );
+        return category;
+    }
+
+    // − / + on an item that is already on the shopping list (optimistic, reloads if the server says no)
+    async function changeShoppingQuantity(entry, quantity) {
+        if (quantity < 1) return;
+
+        setShoppingItems((current) =>
+            current.map((other) => (other.id === entry.id ? { ...other, quantity } : other))
         );
 
         try {
-            await adjustInventoryStock(companyId, item.id, {
-                direction: 'minus',
-                quantity: quantityToRemove,
-            });
+            await updateShoppingListItem(companyId, entry.id, quantity);
         } catch (error) {
-            console.error('Could not adjust item quantity:', error);
-            Alert.alert('Fejl', 'Lagerbeholdningen kunne ikke opdateres.');
-            loadItems();
+            Alert.alert('Fejl', error.message || 'Antallet på indkøbslisten kunne ikke ændres.');
+            loadShoppingList();
         }
     }
 
-    async function saveReceivedBatch() {
-        const quantity = Number(receiptQuantity.replace(',', '.'));
-        const datePattern = /^\d{4}-\d{2}-\d{2}$/;
-
-        if (!Number.isFinite(quantity) || quantity <= 0) {
-            Alert.alert('Ugyldigt antal', 'Indtast et antal, der er større end nul.');
-            return;
-        }
-
-        if (!datePattern.test(purchaseDate) || !datePattern.test(expiryDate)) {
-            Alert.alert('Ugyldig dato', 'Brug datoformatet ÅÅÅÅ-MM-DD.');
-            return;
-        }
-
-        if (expiryDate < purchaseDate) {
-            Alert.alert('Ugyldig dato', 'Udløbsdatoen må ikke ligge før købsdatoen.');
-            return;
-        }
-
-        setIsSavingReceipt(true);
-
+    async function addToShoppingList(quantity) {
+        setIsAddingToList(true);
         try {
-            await receiveInventoryBatch(companyId, receivingItem.id, {
-                quantity,
-                purchaseDate,
-                expiryDate,
-            });
-            setReceivingItem(null);
-            pinItem(receivingItem.id);
-            await loadItems();
+            await addShoppingListItem(companyId, sheet.itemId, quantity);
+            await loadShoppingList();
         } catch (error) {
-            console.error('Could not record received batch:', error);
-            Alert.alert('Fejl', 'Varemodtagelsen kunne ikke registreres.');
+            Alert.alert('Fejl', error.message || 'Varen kunne ikke tilføjes til indkøbslisten.');
         } finally {
-            setIsSavingReceipt(false);
+            setIsAddingToList(false);
         }
     }
 
-    async function openCreateItemModal() {
-        setNewItemName('');
-        setNewItemUnit('stk');
-        setNewItemMinQuantity('0');
-        setNewCategoryName('');
-        setSelectedCategoryId('');
-        setIsCreateItemModalVisible(true);
-
-        try {
-            const loadedCategories = await getInventoryCategories(companyId);
-            const categoryList = Array.isArray(loadedCategories) ? loadedCategories : [];
-            setCategories(categoryList);
-            if (categoryList.length > 0) {
-                setSelectedCategoryId(categoryList[0].id);
-            }
-        } catch (error) {
-            Alert.alert('Fejl', error.message || 'Kategorierne kunne ikke hentes.');
-        }
+    function openCreateItem() {
+        setSheet({ mode: SHEET_MODES.CREATE });
+        loadCategories();
     }
 
-    async function saveNewCategory() {
-        const name = newCategoryName.trim();
-        if (!name) {
-            Alert.alert('Fejl', 'Skriv et kategorinavn.');
-            return;
-        }
+    const openCategories = () => setSheet({ mode: SHEET_MODES.CATEGORIES });
 
-        setIsSavingCategory(true);
+    const openShoppingList = () => navigation.navigate('ShoppingList', { companyId, companyName });
+
+    // Screen 5: create the item, then upload the optional picture, then show the new item's details
+    async function createItem(changes, imageChange) {
+        let itemId;
         try {
-            const category = await createInventoryCategory(companyId, name);
-            setCategories((current) => {
-                const exists = current.some((entry) => entry.id === category.id);
-                return exists ? current : [...current, category];
-            });
-            setSelectedCategoryId(category.id);
-            setNewCategoryName('');
-        } catch (error) {
-            Alert.alert('Fejl', error.message || 'Kategorien kunne ikke oprettes.');
-        } finally {
-            setIsSavingCategory(false);
-        }
-    }
-
-    async function saveNewItem() {
-        const name = newItemName.trim();
-        const unit = newItemUnit.trim();
-        const minQuantity = Number(newItemMinQuantity.replace(',', '.'));
-
-        if (!name || !unit || !selectedCategoryId || !Number.isFinite(minQuantity) || minQuantity < 0) {
-            Alert.alert('Fejl', 'Udfyld varenavn, enhed, kategori og et gyldigt minimumsantal.');
-            return;
-        }
-
-        setIsSavingItem(true);
-        try {
-            await createInventoryItem(companyId, {
-                name,
-                categoryId: selectedCategoryId,
-                unit,
-                minQuantity,
-            });
-            setIsCreateItemModalVisible(false);
-            await loadItems();
-            Alert.alert('Oprettet', `${name} er tilføjet til lageret.`);
+            const created = await createInventoryItem(companyId, changes);
+            itemId = created?.id;
         } catch (error) {
             Alert.alert('Fejl', error.message || 'Varen kunne ikke oprettes.');
-        } finally {
-            setIsSavingItem(false);
-        }
-    }
-    function requestDeleteItem(item) {
-        setItemToDelete(item);
-    }
-
-    async function confirmDeleteItem() {
-        if (!itemToDelete || isDeletingItem) {
             return;
         }
 
-        setIsDeletingItem(true);
-        try {
-            await deleteInventoryItem(companyId, itemToDelete.id);
-            setItemToDelete(null);
-            await loadItems();
-            await loadShoppingListCount();
-            Alert.alert('Arkiveret', `${itemToDelete.name} er fjernet fra lageret og indkøbslisten.`);
-        } catch (error) {
-            setItemToDelete(null);
-            Alert.alert('Fejl', error.message || 'Varen kunne ikke arkiveres.');
-        } finally {
-            setIsDeletingItem(false);
+        if (itemId && imageChange?.type === IMAGE_CHANGE.NEW) {
+            try {
+                await uploadItemImage(companyId, itemId, imageChange.asset);
+            } catch (error) {
+                Alert.alert(
+                    'Billedet blev ikke gemt',
+                    getErrorMessage(error, {
+                        413: 'Varen er oprettet, men billedet er for stort. Vælg et billede under 5 MB.',
+                        415: 'Varen er oprettet, men billedet skal være JPEG, PNG eller WebP.',
+                        fallback: 'Varen er oprettet, men billedet kunne ikke gemmes. Prøv igen under Rediger.',
+                    }),
+                );
+            }
         }
+
+        await loadItems({ silent: true });
+        // Showing the new item confirms it was created and lets the user receive goods straight away
+        setSheet(itemId ? { itemId, mode: SHEET_MODES.DETAILS } : null);
     }
-    const listHeader = (
-        <View style={styles.listHeader}>
-            <View style={styles.summaryGrid}>
-                {SUMMARY_CARDS.map((card) => (
-                    <InventorySummaryCard
-                        key={card.filter}
-                        icon={card.icon}
-                        label={card.label}
-                        count={card.filter === FILTERS.SHOPPING ? shoppingListCount : counts[card.filter]}
-                        color={card.color}
-                        softColor={card.softColor}
-                        isActive={card.filter !== FILTERS.SHOPPING && activeFilter === card.filter}
-                        isTablet={isTablet}
-                        onPress={() => card.filter === FILTERS.SHOPPING ? navigation.navigate('ShoppingList', { companyId, companyName }) : toggleFilter(card.filter)}
-                    />
-                ))}
-            </View>
 
-            <View style={styles.searchBox}>
-                <Search size={20} color={inventoryColors.muted} />
-                <TextInput
-                    style={styles.searchInput}
-                    placeholder="Søg på navn eller kategori"
-                    value={search}
-                    onChangeText={setSearch}
-                    autoCorrect={false}
-                    returnKeyType="search"
-                />
-                {search.length > 0 && (
-                    <Pressable
-                        style={styles.clearSearchButton}
-                        onPress={() => setSearch('')}
-                        accessibilityRole="button"
-                        accessibilityLabel="Ryd søgning">
-                            <X size={20} color={inventoryColors.muted} />
-                        </Pressable>
-
-                )}
-            </View>
-
-            <View style={styles.listTitleRow}>
-                <Text style={styles.listTitle}>
-                    {LIST_TITLES[activeFilter]} ({visibleItems.length})
-                </Text>
-                {activeFilter !== FILTERS.ALL && (
-                    <Pressable onPress={() => setActiveFilter(FILTERS.ALL)} accessibilityRole="button" hitSlop={8}>
-                        <Text style={styles.showAllText}>Vis alle</Text>
-                    </Pressable>
-                )}
-            </View>
-        </View>
+    const selectedCardConfig = SUMMARY_CARDS.find((card) => card.key === selectedCard);
+    const refreshControl = (
+        <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor={inventoryColors.primary} colors={[inventoryColors.primary]} />
     );
 
-    return (
-        <SafeAreaView style={styles.safeArea}>
-            <View style={styles.topBar}>
-                <Pressable
-                    style={styles.backButton}
-                    onPress={() => navigation.goBack()}
-                    accessibilityRole="button"
-                    accessibilityLabel="Gå tilbage">
-                        <ChevronLeft size={24} color={inventoryColors.text} />
-                </Pressable>
-                <View>
-                    <Text style={styles.title}>Lager</Text>
-                    <Text style={styles.subtitle} numberOfLines={1}>{companyName}</Text>
+    function renderHeader() {
+        return (
+            <View style={styles.header}>
+                <View style={styles.titleRow}>
+                    <Pressable
+                        style={styles.backButton}
+                        onPress={() => navigation.goBack()}
+                        accessibilityRole="button"
+                        accessibilityLabel="Gå tilbage">
+                        <ChevronLeft size={26} color={inventoryColors.primary} />
+                    </Pressable>
+
+                    <View style={styles.titleBlock}>
+                        <Text style={styles.title} accessibilityRole="header">Lager</Text>
+                        <Text style={styles.subtitle} numberOfLines={1}>
+                            {`${items.length} varer`}
+                            {attentionCount > 0 ? (
+                                <>
+                                    {' · '}
+                                    <Text style={styles.subtitleAlert}>{`${attentionCount} kræver handling`}</Text>
+                                </>
+                            ) : ` · ${companyName}`}
+                        </Text>
+                    </View>
                 </View>
+
+                <View style={styles.tabs} accessibilityRole="tablist">
+                    {[
+                        { key: TABS.OVERVIEW, label: 'Overblik' },
+                        { key: TABS.ITEMS, label: 'Varer', count: items.length },
+                    ].map((tab) => {
+                        const isActive = activeTab === tab.key;
+                        return (
+                            <Pressable
+                                key={tab.key}
+                                onPress={() => setActiveTab(tab.key)}
+                                accessibilityRole="tab"
+                                accessibilityState={{ selected: isActive }}
+                                style={[styles.tab, isActive && styles.tabActive]}>
+                                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab.label}</Text>
+                                {tab.count !== undefined && <Text style={styles.tabCount}>{tab.count}</Text>}
+                            </Pressable>
+                        );
+                    })}
+                </View>
+
+                {activeTab === TABS.ITEMS && (
+                    <>
+                        <View style={styles.searchBox}>
+                            <Search size={18} color={inventoryColors.muted} />
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder="Søg"
+                                placeholderTextColor={inventoryColors.muted}
+                                value={search}
+                                onChangeText={setSearch}
+                                autoCorrect={false}
+                                returnKeyType="search"
+                                accessibilityLabel="Søg i lageret"
+                            />
+                            {search.length > 0 && (
+                                <Pressable
+                                    style={styles.clearSearchButton}
+                                    onPress={() => setSearch('')}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Ryd søgning">
+                                    <CircleX size={18} color={inventoryColors.muted} />
+                                </Pressable>
+                            )}
+                        </View>
+
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.chipRow}
+                            keyboardShouldPersistTaps="handled">
+                            {[null, ...categoryNames].map((name) => {
+                                const isActive = selectedCategory === name;
+                                return (
+                                    <Pressable
+                                        key={name ?? 'all'}
+                                        onPress={() => setSelectedCategory(name)}
+                                        accessibilityRole="button"
+                                        accessibilityState={{ selected: isActive }}
+                                        style={[styles.chip, isActive && styles.chipActive]}>
+                                        <Text style={[styles.chipText, isActive && styles.chipTextActive]}>{name ?? 'Alle'}</Text>
+                                    </Pressable>
+                                );
+                            })}
+                            <Pressable
+                                onPress={openCategories}
+                                accessibilityRole="button"
+                                accessibilityLabel="Administrer kategorier"
+                                style={({ pressed }) => [styles.addChip, pressed && styles.pressed]}>
+                                <Plus size={18} strokeWidth={2.4} color={inventoryColors.primary} />
+                            </Pressable>
+                        </ScrollView>
+                    </>
+                )}
             </View>
+        );
+    }
+
+    function renderOverview() {
+        return (
+            <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl}>
+                <View style={styles.cardGrid}>
+                    {SUMMARY_CARDS.map((card) => (
+                        <InventorySummaryCard
+                            key={card.key}
+                            icon={card.icon}
+                            label={card.label}
+                            count={cardCounts[card.key]}
+                            color={card.color}
+                            softColor={card.softColor}
+                            isSelected={selectedCard === card.key}
+                            onPress={card.key === CARDS.SHOPPING ? openShoppingList : () => setSelectedCard(card.key)}
+                            opensScreen={card.key === CARDS.SHOPPING}
+                        />
+                    ))}
+                </View>
+
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle} accessibilityRole="header">
+                        {`${selectedCardConfig.label} · ${overviewRows.length}`}
+                    </Text>
+                </View>
+
+                <View style={styles.group}>
+                    {overviewRows.length === 0 ? (
+                        <View style={styles.emptyBlock}>
+                            <Text style={styles.messageText}>Ingen varer – alt er i orden.</Text>
+                        </View>
+                    ) : (
+                        overviewRows.map((row, index) => (
+                            <InventoryOverviewRow
+                                key={row.key}
+                                name={row.name}
+                                imageUrl={row.imageUrl}
+                                status={row.status}
+                                quantity={row.quantity}
+                                minQuantity={row.minQuantity}
+                                unit={row.unit}
+                                isFirst={index === 0}
+                                onPress={() => setSheet({ itemId: row.itemId, mode: SHEET_MODES.DETAILS })}
+                            />
+                        ))
+                    )}
+                </View>
+            </ScrollView>
+        );
+    }
+
+    function renderItems() {
+        return (
+            <SectionList
+                sections={sections}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.content}
+                stickySectionHeadersEnabled={false}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+                refreshControl={refreshControl}
+                renderSectionHeader={({ section }) => (
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle} accessibilityRole="header">
+                            {`${section.title} · ${section.data.length}`}
+                        </Text>
+                    </View>
+                )}
+                renderSectionFooter={() => <View style={styles.sectionSpacing} />}
+                renderItem={({ item, index, section }) => (
+                    <InventoryItemRow
+                        item={item}
+                        isFirst={index === 0}
+                        isLast={index === section.data.length - 1}
+                        onOpen={openItem}
+                        onUse={openUse}
+                        onReceive={openReceive}
+                    />
+                )}
+                ListEmptyComponent={
+                    <View style={styles.emptyBlock}>
+                        <Text style={styles.messageTitle}>
+                            {items.length === 0 ? 'Der er ingen varer på lageret endnu' : 'Ingen varer fundet'}
+                        </Text>
+                        <Text style={styles.messageText}>
+                            {items.length === 0 ? 'Tryk på "Opret vare" for at tilføje den første.' : 'Prøv en anden søgning eller kategori.'}
+                        </Text>
+                    </View>
+                }
+            />
+        );
+    }
+
+    return (
+        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+            {renderHeader()}
 
             {isLoading ? (
                 <View style={styles.centered}>
@@ -380,225 +601,80 @@ export default function InventoryScreen({ navigation, route }) {
             ) : hasError ? (
                 <View style={styles.centered}>
                     <Text style={styles.messageTitle}>Kunne ikke hente lageret</Text>
-                    <Pressable onPress={loadItems} accessibilityRole="button" hitSlop={8}>
+                    <Pressable onPress={() => loadItems()} accessibilityRole="button" hitSlop={8}>
                         <Text style={styles.retryText}>Prøv igen</Text>
                     </Pressable>
                 </View>
+            ) : activeTab === TABS.OVERVIEW ? (
+                renderOverview()
             ) : (
-                <FlatList
-                    key={isTablet ? 'tablet' : 'phone'}
-                    data={visibleItems}
-                    keyExtractor={(item) => item.id}
-                    numColumns={isTablet ? 2 : 1}
-                    columnWrapperStyle={isTablet ? styles.column : undefined}
-                    contentContainerStyle={styles.listContent}
-                    keyboardShouldPersistTaps="handled"
-                    ListHeaderComponent={listHeader}
-                    ListEmptyComponent={
-                        <View style={styles.emptyList}>
-                            <Text style={styles.messageTitle}>Ingen varer fundet</Text>
-                            <Text style={styles.messageText}>
-                                {items.length === 0 ? 'Der er ingen varer på lageret endnu.' : 'Prøv en anden søgning eller et andet filter.'}
-                            </Text>
-                        </View>
-                    }
-                    renderItem={({ item }) => (
-                        <InventoryItemRow item={item} isTablet={isTablet} onChangeQuantity={changeQuantity} onAddToShoppingList={addItemToShoppingList} onDeleteItem={requestDeleteItem} />
-                    )}
-                />
+                renderItems()
             )}
-        <Modal
-            visible={receivingItem !== null}
-            transparent
-            animationType="fade"
-            onRequestClose={() => !isSavingReceipt && setReceivingItem(null)}>
-            <View style={{ flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(0, 0, 0, 0.45)' }}>
-                <View style={{ padding: 20, borderRadius: 16, backgroundColor: 'white' }}>
-                    <Text style={{ marginBottom: 8, fontSize: 20, fontWeight: '700', color: inventoryColors.text }}>
-                        Registrer varemodtagelse
-                    </Text>
-                    <Text style={{ marginBottom: 16, color: inventoryColors.muted }}>
-                        {receivingItem?.name}
-                    </Text>
 
-                    <Text style={{ marginBottom: 4, color: inventoryColors.text }}>Antal</Text>
-                    <TextInput
-                        value={receiptQuantity}
-                        onChangeText={setReceiptQuantity}
-                        keyboardType="decimal-pad"
-                        style={{ marginBottom: 12, padding: 12, borderWidth: 1, borderColor: inventoryColors.muted, borderRadius: 8 }}
+            <Pressable
+                onPress={openCreateItem}
+                accessibilityRole="button"
+                accessibilityLabel="Opret vare"
+                style={({ pressed }) => [styles.fab, { bottom: insets.bottom + 16 }, pressed && styles.pressed]}>
+                <Plus size={22} strokeWidth={2.6} color="#FFFFFF" />
+                <Text style={styles.fabText}>Opret vare</Text>
+            </Pressable>
+
+            <InventorySheet visible={isSheetVisible} onClose={closeSheet}>
+                {sheet?.mode === SHEET_MODES.CREATE && (
+                    <ItemForm
+                        mode={FORM_MODES.CREATE}
+                        categoryOptions={categoryOptions}
+                        onCancel={closeSheet}
+                        onSave={createItem}
+                        onCreateCategory={createCategory}
                     />
-
-                    <Text style={{ marginBottom: 4, color: inventoryColors.text }}>Købsdato (ÅÅÅÅ-MM-DD)</Text>
-                    <TextInput
-                        value={purchaseDate}
-                        onChangeText={setPurchaseDate}
-                        placeholder="2026-11-05"
-                        style={{ marginBottom: 12, padding: 12, borderWidth: 1, borderColor: inventoryColors.muted, borderRadius: 8 }}
+                )}
+                {sheet?.mode === SHEET_MODES.CATEGORIES && (
+                    <CategoryManager
+                        categoryOptions={categoryOptions}
+                        itemCounts={itemCountByCategory}
+                        onCreateCategory={createCategory}
+                        onDone={closeSheet}
                     />
-
-                    <Text style={{ marginBottom: 4, color: inventoryColors.text }}>Udløbsdato (ÅÅÅÅ-MM-DD)</Text>
-                    <TextInput
-                        value={expiryDate}
-                        onChangeText={setExpiryDate}
-                        placeholder="2026-11-12"
-                        style={{ marginBottom: 16, padding: 12, borderWidth: 1, borderColor: inventoryColors.muted, borderRadius: 8 }}
+                )}
+                {sheetItem && sheet.mode === SHEET_MODES.DETAILS && (
+                    <ItemDetails
+                        item={sheetItem}
+                        shoppingEntry={shoppingByItemId[sheetItem.id]}
+                        isAddingToList={isAddingToList}
+                        onEdit={() => setSheet({ ...sheet, mode: SHEET_MODES.EDIT })}
+                        onReceive={() => openReceive(sheetItem, true)}
+                        onAddToShoppingList={addToShoppingList}
+                        onChangeShoppingQuantity={changeShoppingQuantity}
                     />
-
-                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
-                        <Pressable
-                            disabled={isSavingReceipt}
-                            onPress={() => setReceivingItem(null)}
-                            style={{ padding: 12 }}>
-                            <Text style={{ color: inventoryColors.muted }}>Annuller</Text>
-                        </Pressable>
-                        <Pressable
-                            disabled={isSavingReceipt}
-                            onPress={saveReceivedBatch}
-                            style={{ padding: 12, borderRadius: 8, backgroundColor: inventoryColors.primary }}>
-                            <Text style={{ color: 'white', fontWeight: '600' }}>
-                                {isSavingReceipt ? 'Gemmer…' : 'Gem varemodtagelse'}
-                            </Text>
-                        </Pressable>
-                    </View>
-                </View>
-            </View>
-        </Modal>
-        <Pressable
-            onPress={openCreateItemModal}
-            accessibilityRole="button"
-            accessibilityLabel="Tilføj vare"
-            style={{
-                position: 'absolute',
-                right: 24,
-                bottom: 24,
-                width: 58,
-                height: 58,
-                borderRadius: 29,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: inventoryColors.primary,
-                elevation: 5,
-                shadowColor: '#000',
-                shadowOpacity: 0.2,
-                shadowRadius: 5,
-            }}>
-            <Plus size={28} color="white" />
-        </Pressable>
-
-        <Modal
-            visible={isCreateItemModalVisible}
-            transparent
-            animationType="fade"
-            onRequestClose={() => !isSavingItem && setIsCreateItemModalVisible(false)}>
-            <View style={{ flex: 1, justifyContent: 'center', padding: 20, backgroundColor: 'rgba(0, 0, 0, 0.45)' }}>
-                <View style={{ maxHeight: '90%', padding: 20, borderRadius: 16, backgroundColor: 'white' }}>
-                    <ScrollView keyboardShouldPersistTaps="handled">
-                        <Text style={{ marginBottom: 16, fontSize: 20, fontWeight: '700', color: inventoryColors.text }}>
-                            Opret vare
-                        </Text>
-
-                        <Text style={{ marginBottom: 4, color: inventoryColors.text }}>Varenavn</Text>
-                        <TextInput
-                            value={newItemName}
-                            onChangeText={setNewItemName}
-                            placeholder="F.eks. Tomater"
-                            style={{ marginBottom: 12, padding: 12, borderWidth: 1, borderColor: inventoryColors.muted, borderRadius: 8 }}
-                        />
-
-                        <Text style={{ marginBottom: 4, color: inventoryColors.text }}>Enhed</Text>
-                        <TextInput
-                            value={newItemUnit}
-                            onChangeText={setNewItemUnit}
-                            placeholder="stk, kg eller liter"
-                            style={{ marginBottom: 12, padding: 12, borderWidth: 1, borderColor: inventoryColors.muted, borderRadius: 8 }}
-                        />
-
-                        <Text style={{ marginBottom: 4, color: inventoryColors.text }}>Minimumsantal</Text>
-                        <TextInput
-                            value={newItemMinQuantity}
-                            onChangeText={setNewItemMinQuantity}
-                            keyboardType="decimal-pad"
-                            style={{ marginBottom: 16, padding: 12, borderWidth: 1, borderColor: inventoryColors.muted, borderRadius: 8 }}
-                        />
-
-                        <Text style={{ marginBottom: 8, color: inventoryColors.text, fontWeight: '600' }}>
-                            Vælg kategori
-                        </Text>
-
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-                            {categories.map((category) => (
-                                <Pressable
-                                    key={category.id}
-                                    onPress={() => setSelectedCategoryId(category.id)}
-                                    style={{
-                                        paddingHorizontal: 12,
-                                        paddingVertical: 9,
-                                        borderRadius: 18,
-                                        backgroundColor: selectedCategoryId === category.id
-                                            ? inventoryColors.primary
-                                            : '#EEF1EF',
-                                    }}>
-                                    <Text style={{
-                                        color: selectedCategoryId === category.id ? 'white' : inventoryColors.text,
-                                        fontWeight: '600',
-                                    }}>
-                                        {category.name}
-                                    </Text>
-                                </Pressable>
-                            ))}
-                        </View>
-
-                        <Text style={{ marginBottom: 4, color: inventoryColors.text }}>Opret ny kategori</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 18 }}>
-                            <TextInput
-                                value={newCategoryName}
-                                onChangeText={setNewCategoryName}
-                                placeholder="F.eks. Grøntsager eller Kød"
-                                style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: inventoryColors.muted, borderRadius: 8 }}
-                            />
-                            <Pressable
-                                disabled={isSavingCategory}
-                                onPress={saveNewCategory}
-                                style={{ padding: 12, borderRadius: 8, backgroundColor: inventoryColors.blue }}>
-                                <Text style={{ color: 'white', fontWeight: '600' }}>
-                                    {isSavingCategory ? 'Gemmer…' : 'Tilføj'}
-                                </Text>
-                            </Pressable>
-                        </View>
-
-                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
-                            <Pressable
-                                disabled={isSavingItem}
-                                onPress={() => setIsCreateItemModalVisible(false)}
-                                style={{ padding: 12 }}>
-                                <Text style={{ color: inventoryColors.muted }}>Annuller</Text>
-                            </Pressable>
-                            <Pressable
-                                disabled={isSavingItem}
-                                onPress={saveNewItem}
-                                style={{ padding: 12, borderRadius: 8, backgroundColor: inventoryColors.primary }}>
-                                <Text style={{ color: 'white', fontWeight: '600' }}>
-                                    {isSavingItem ? 'Gemmer…' : 'Gem vare'}
-                                </Text>
-                            </Pressable>
-                        </View>
-                    </ScrollView>
-                </View>
-            </View>
-        </Modal>
-        <ConfirmationModal
-            visible={itemToDelete !== null}
-            variant="danger"
-            title="Arkivér vare?"
-            message={itemToDelete
-                ? `Vil du arkivere ${itemToDelete.name}? Varen fjernes fra det aktive lager og indkøbslisten. Lagerhistorikken bevares.`
-                : ''}
-            confirmText={isDeletingItem ? 'Arkiverer…' : 'Arkivér vare'}
-            cancelText="Annuller"
-            onConfirm={confirmDeleteItem}
-            onCancel={() => !isDeletingItem && setItemToDelete(null)}
-        />
+                )}
+                {sheetItem && sheet.mode === SHEET_MODES.EDIT && (
+                    <ItemForm
+                        mode={FORM_MODES.EDIT}
+                        item={sheetItem}
+                        categoryOptions={categoryOptions}
+                        onCancel={showDetails}
+                        onSave={saveItemChanges}
+                        onCreateCategory={createCategory}
+                    />
+                )}
+                {sheetItem && sheet.mode === SHEET_MODES.RECEIVE && (
+                    <ReceiveForm
+                        item={sheetItem}
+                        onCancel={sheet.backToDetails ? showDetails : closeSheet}
+                        onSave={saveReceivedBatch}
+                    />
+                )}
+                {sheetItem && sheet.mode === SHEET_MODES.USE && (
+                    <UseForm
+                        item={sheetItem}
+                        loadBatches={loadSheetBatches}
+                        onCancel={closeSheet}
+                        onUse={saveUse}
+                    />
+                )}
+            </InventorySheet>
         </SafeAreaView>
     );
 }

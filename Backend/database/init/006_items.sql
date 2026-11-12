@@ -6,7 +6,8 @@ CREATE TABLE items (
     name          TEXT NOT NULL,
     unit          TEXT NOT NULL,
     min_quantity  NUMERIC(12, 3) NOT NULL DEFAULT 0 CHECK (min_quantity >= 0),
-    image_url     TEXT,
+    image_url     BYTEA,        -- item picture stored as raw image bytes (not a URL)
+    image_updated_at TIMESTAMPTZ, -- changes on every upload, used to refresh cached images
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

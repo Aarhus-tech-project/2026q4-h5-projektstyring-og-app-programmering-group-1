@@ -4,9 +4,12 @@ import { Pressable, ScrollView, Text, View, TouchableOpacity } from 'react-nativ
 import { Image } from 'expo-image';
 import {
     ChevronRight,
+    Clock,
     Layers,
     Package,
+    PackageX,
     Plus,
+    ShoppingCart,
     Store,
     TrendingDown,
     TriangleAlert,
@@ -16,7 +19,7 @@ import styles, { dashboardColors } from '../styles/dashboardStyles';
 import { useAuth } from '../AuthContext/AuthContext';
 import http from "../../http/http";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
-import { getInventoryItems } from "../services/inventoryService";
+import { getInventoryItems, getShoppingList } from "../services/inventoryService";
 import { FILTERS, getInventoryCounts } from "../utils/inventoryUtils";
 import { getNotifications } from "../services/notificationService";
 import { SaveExpoToken, getNotificationPermission } from "../utils/notificationUtils";
@@ -46,7 +49,8 @@ export default function DashboardScreen() {
 
     const [askNotifications, setAskNotifications] = useState(false);
 
-    // Lagertal pr. virksomhed, hentet fra databasen: { [companyId]: { itemCount, expiringSoonCount, lowStockCount } }
+    // Lagertal pr. virksomhed, hentet fra databasen:
+    // { [companyId]: { itemCount, expiringSoonCount, lowStockCount, outOfStockCount, shoppingListCount } }
     const [stats, setStats] = useState({});
     const [loadingStats, setLoadingStats] = useState(false);
     const hasLoadedStats = useRef(false);
@@ -63,12 +67,22 @@ export default function DashboardScreen() {
             const results = await Promise.all(
                 companies.map(async (company) => {
                     try {
-                        const items = await getInventoryItems(company.id);
+                        const [items, shoppingList] = await Promise.all([
+                            getInventoryItems(company.id),
+                            // The shopping list is extra info; if it fails, the card still shows the stock numbers
+                            getShoppingList(company.id).catch(() => []),
+                        ]);
                         const counts = getInventoryCounts(items);
                         return [company.id, {
                             itemCount: items.length,
                             expiringSoonCount: counts[FILTERS.EXPIRING],
-                            lowStockCount: counts[FILTERS.LOW] + counts[FILTERS.OUT],
+                            // Split like the Lager screen: low stock (amber) and out of stock (red)
+                            lowStockCount: counts[FILTERS.LOW],
+                            outOfStockCount: counts[FILTERS.OUT],
+                            // The shopping list comes grouped by category; count the lines
+                            shoppingListCount: Array.isArray(shoppingList)
+                                ? shoppingList.reduce((sum, category) => sum + (category.items?.length ?? 0), 0)
+                                : 0,
                         }];
                     } catch (error) {
                         console.error(`Error loading inventory for company ${company.id}:`, error);
@@ -111,7 +125,10 @@ export default function DashboardScreen() {
 
     const companiesWithStats = companies.map((c) => ({ ...c, ...stats[c.id] }));
     const totalItems = companiesWithStats.reduce((sum, c) => sum + (c.itemCount ?? 0), 0);
-    const totalWarnings = companiesWithStats.reduce((sum, c) => sum + (c.expiringSoonCount ?? 0) + (c.lowStockCount ?? 0), 0);
+    const totalWarnings = companiesWithStats.reduce(
+        (sum, c) => sum + (c.expiringSoonCount ?? 0) + (c.lowStockCount ?? 0) + (c.outOfStockCount ?? 0),
+        0
+    );
 
 
     useEffect(() => {
@@ -304,7 +321,7 @@ export default function DashboardScreen() {
 }
 
 function CompanyCard({ company, isFullWidth, onPress, onLongPress, onSelect }) {
-    const hasWarnings = company.expiringSoonCount > 0 || company.lowStockCount > 0;
+    const hasWarnings = company.expiringSoonCount > 0 || company.lowStockCount > 0 || company.outOfStockCount > 0;
 
     return (
         <Pressable
@@ -333,22 +350,44 @@ function CompanyCard({ company, isFullWidth, onPress, onLongPress, onSelect }) {
                     </View>
                 </View>
 
+                {/* Same colours and icons as the cards on the Lager screen */}
                 {company.expiringSoonCount > 0 && (
-                    <View style={[styles.chip, styles.warningChip]}>
-                        <TriangleAlert size={18} color={dashboardColors.red} />
+                    <View style={[styles.chip, styles.expiringChip]}>
+                        <Clock size={18} color={dashboardColors.violet} />
                         <View>
-                            <Text style={[styles.chipValue, styles.warningText]}>{company.expiringSoonCount}</Text>
-                            <Text style={[styles.chipLabel, styles.warningText]}>udløber snart</Text>
+                            <Text style={[styles.chipValue, styles.expiringText]}>{company.expiringSoonCount}</Text>
+                            <Text style={[styles.chipLabel, styles.expiringText]}>udløber snart</Text>
                         </View>
                     </View>
                 )}
 
                 {company.lowStockCount > 0 && (
-                    <View style={[styles.chip, styles.warningChip]}>
-                        <TrendingDown size={18} color={dashboardColors.red} />
+                    <View style={[styles.chip, styles.lowStockChip]}>
+                        <TrendingDown size={18} color={dashboardColors.amber} />
                         <View>
-                            <Text style={[styles.chipValue, styles.warningText]}>{company.lowStockCount}</Text>
-                            <Text style={[styles.chipLabel, styles.warningText]}>lav beholdning</Text>
+                            <Text style={[styles.chipValue, styles.lowStockText]}>{company.lowStockCount}</Text>
+                            <Text style={[styles.chipLabel, styles.lowStockText]}>lav beholdning</Text>
+                        </View>
+                    </View>
+                )}
+
+                {company.outOfStockCount > 0 && (
+                    <View style={[styles.chip, styles.outOfStockChip]}>
+                        <PackageX size={18} color={dashboardColors.red} />
+                        <View>
+                            <Text style={[styles.chipValue, styles.outOfStockText]}>{company.outOfStockCount}</Text>
+                            <Text style={[styles.chipLabel, styles.outOfStockText]}>ikke på lager</Text>
+                        </View>
+                    </View>
+                )}
+
+                {/* Not a warning, just what is waiting to be bought (green, like the Lager screen) */}
+                {company.shoppingListCount > 0 && (
+                    <View style={[styles.chip, styles.shoppingChip]}>
+                        <ShoppingCart size={18} color={dashboardColors.primary} />
+                        <View>
+                            <Text style={[styles.chipValue, styles.shoppingText]}>{company.shoppingListCount}</Text>
+                            <Text style={[styles.chipLabel, styles.shoppingText]}>på indkøbsliste</Text>
                         </View>
                     </View>
                 )}

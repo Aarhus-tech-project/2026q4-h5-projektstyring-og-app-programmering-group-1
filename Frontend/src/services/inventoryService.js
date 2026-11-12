@@ -1,4 +1,4 @@
-﻿import http from '../../http/http';
+import http from '../../http/http';
 
 
 
@@ -34,6 +34,36 @@ export async function deleteInventoryItem(companyId, itemId) {
     const response = await http.delete(
         `/companies/${companyId}/items/${itemId}`
     );
+    return getResponseData(response);
+}
+
+// Batches of an item that still have stock, the one that expires first first
+export async function getItemBatches(companyId, itemId) {
+    const response = await http.get(`/companies/${companyId}/items/${itemId}/batches`);
+    return getResponseData(response);
+}
+
+// asset comes from expo-image-picker. Sent as multipart and stored as a blob in the database (like the avatar).
+export async function uploadItemImage(companyId, itemId, asset) {
+    const mimeType = asset.mimeType || 'image/jpeg';
+    const extension = mimeType.split('/')[1] || 'jpg';
+
+    const formData = new FormData();
+    formData.append('image', {
+        uri: asset.uri,
+        name: asset.fileName || `item.${extension}`,
+        type: mimeType,
+    });
+
+    const response = await http.put(`/companies/${companyId}/items/${itemId}/image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 30000,
+    });
+    return getResponseData(response);
+}
+
+export async function deleteItemImage(companyId, itemId) {
+    const response = await http.delete(`/companies/${companyId}/items/${itemId}/image`);
     return getResponseData(response);
 }
 

@@ -1,18 +1,24 @@
 import { StyleSheet } from 'react-native';
-import colors from '../constants/colors';
+import { inventoryColors } from './inventoryStyles';
 
+// Same palette as the Lager screen, so status colours mean the same everywhere:
+// violet = udløber snart, amber = lav beholdning, red = ikke på lager
 export const dashboardColors = {
-    background: '#F3F4F6',
-    card: '#FFFFFF',
-    chip: '#F3F4F6',
-    border: '#E5E7EB',
-    primary: colors.primary,
-    primarySoft: '#ECFDF5',
-    black: colors.text.primary,
-    red: '#DC2626',
-    redSoft: '#FEE2E2',
-    text: colors.text.primary,
-    muted: '#6B7280',
+    background: inventoryColors.background,
+    card: inventoryColors.card,
+    chip: inventoryColors.controlSoft,
+    border: inventoryColors.control,
+    primary: inventoryColors.primary,
+    primarySoft: inventoryColors.primarySoft,
+    black: inventoryColors.text,
+    red: inventoryColors.red,
+    redSoft: inventoryColors.redSoft,
+    amber: inventoryColors.amber,
+    amberSoft: inventoryColors.amberSoft,
+    violet: inventoryColors.violet,
+    violetSoft: inventoryColors.violetSoft,
+    text: inventoryColors.text,
+    muted: inventoryColors.muted,
 };
 
 const styles = StyleSheet.create({
@@ -255,8 +261,20 @@ const styles = StyleSheet.create({
         minHeight: 42,
     },
 
-    warningChip: {
+    expiringChip: {
+        backgroundColor: dashboardColors.violetSoft,
+    },
+
+    lowStockChip: {
+        backgroundColor: dashboardColors.amberSoft,
+    },
+
+    outOfStockChip: {
         backgroundColor: dashboardColors.redSoft,
+    },
+
+    shoppingChip: {
+        backgroundColor: dashboardColors.primarySoft,
     },
 
     chipValue: {
@@ -270,8 +288,20 @@ const styles = StyleSheet.create({
         fontSize: 12,
     },
 
-    warningText: {
+    expiringText: {
+        color: dashboardColors.violet,
+    },
+
+    lowStockText: {
+        color: dashboardColors.amber,
+    },
+
+    outOfStockText: {
         color: dashboardColors.red,
+    },
+
+    shoppingText: {
+        color: dashboardColors.primary,
     },
 
     addButton: {
@@ -334,7 +364,7 @@ const styles = StyleSheet.create({
         width: 170,
         height: 130,
         borderRadius: 65,
-        backgroundColor: '#D1FAE5',
+        backgroundColor: dashboardColors.primarySoft,
     },
 
     sparks: {
