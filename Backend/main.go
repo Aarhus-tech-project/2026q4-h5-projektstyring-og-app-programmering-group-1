@@ -121,6 +121,8 @@ func main() {
 		protected.GET("/cvr=:cvr/userID=:userID", routers.ResearchCVR)
 		protected.GET("/user/:userID/avatar", routers.HandleGetAvatar)
 		protected.GET("/notifications", routers.HandleGetNotifications)
+		protected.GET("/companies", routers.HandleGetManagedCompanies)
+		protected.GET("/companies/:companyID", routers.HandleGetCompanyDetails)
 
 		// PUT //
 		protected.PUT("/user/:userID", routers.HandleUpdateProfile)
