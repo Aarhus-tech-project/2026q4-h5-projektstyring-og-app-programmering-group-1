@@ -1,14 +1,17 @@
 import { Pressable, Text, View } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
 import styles, { inventoryColors } from '../../styles/inventoryStyles';
 
 // One of the four Overblik cards. The selected card decides which items the list below shows.
-export default function InventorySummaryCard({ icon: Icon, label, count, color, softColor, isSelected, onPress }) {
+// opensScreen: the card navigates to another screen instead (shown with a ›), so it is never "selected".
+export default function InventorySummaryCard({ icon: Icon, label, count, color, softColor, isSelected, opensScreen = false, onPress }) {
     return (
         <Pressable
             onPress={onPress}
             accessibilityRole="button"
             accessibilityLabel={`${label}: ${count} varer`}
-            accessibilityState={{ selected: isSelected }}
+            accessibilityHint={opensScreen ? `Åbner ${label.toLowerCase()}` : undefined}
+            accessibilityState={opensScreen ? undefined : { selected: isSelected }}
             style={({ pressed }) => [
                 styles.summaryCard,
                 isSelected && { borderColor: color, backgroundColor: softColor },
@@ -18,6 +21,7 @@ export default function InventorySummaryCard({ icon: Icon, label, count, color, 
                 <View style={[styles.summaryIcon, { backgroundColor: isSelected ? inventoryColors.card : softColor }]}>
                     <Icon size={20} color={color} />
                 </View>
+                {opensScreen && <ChevronRight size={20} color={inventoryColors.disabled} />}
             </View>
 
             <Text style={[styles.summaryCount, { color: count > 0 ? color : inventoryColors.text }]}>{count}</Text>

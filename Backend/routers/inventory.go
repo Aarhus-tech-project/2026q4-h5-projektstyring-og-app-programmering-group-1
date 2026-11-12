@@ -24,6 +24,8 @@ type inventoryItemResponse struct {
 	Unit           string  `json:"unit"`
 	MinQuantity    float64 `json:"minQuantity"`
 	NextExpiryDate *string `json:"nextExpiryDate,omitempty"`
+	// Path to GET .../items/:itemID/image (with ?v= so a new upload is not served from cache), or omitted without a picture
+	ImageURL *string `json:"imageUrl,omitempty"`
 }
 
 func GetInventoryItems(c *gin.Context) {
@@ -82,7 +84,11 @@ COALESCE(c.name, ''),
 COALESCE(SUM(b.remaining_quantity), 0)::double precision,
 i.unit,
 i.min_quantity::double precision,
-MIN(b.expiry_date) FILTER (WHERE b.remaining_quantity > 0)
+MIN(b.expiry_date) FILTER (WHERE b.remaining_quantity > 0),
+CASE WHEN i.image_url IS NOT NULL
+     THEN '/companies/' || i.company_id::text || '/items/' || i.id::text || '/image?v='
+          || COALESCE((EXTRACT(EPOCH FROM i.image_updated_at) * 1000)::bigint, 0)::text
+END
 FROM items i
 LEFT JOIN categories c
 ON c.id = i.category_id
@@ -116,6 +122,7 @@ ORDER BY c.name NULLS LAST, i.name`,
 	for rows.Next() {
 		var item inventoryItemResponse
 		var nextExpiry sql.NullTime
+		var imageURL sql.NullString
 
 		if err := rows.Scan(
 			&item.ID,
@@ -125,6 +132,7 @@ ORDER BY c.name NULLS LAST, i.name`,
 			&item.Unit,
 			&item.MinQuantity,
 			&nextExpiry,
+			&imageURL,
 		); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success": false,
@@ -137,6 +145,10 @@ ORDER BY c.name NULLS LAST, i.name`,
 		if nextExpiry.Valid {
 			expiryDate := nextExpiry.Time.Format(time.DateOnly)
 			item.NextExpiryDate = &expiryDate
+		}
+
+		if imageURL.Valid {
+			item.ImageURL = &imageURL.String
 		}
 
 		items = append(items, item)
@@ -736,6 +748,10 @@ type shoppingListEntryResponse struct {
 	Name     string  `json:"name"`
 	Quantity float64 `json:"quantity"`
 	Unit     string  `json:"unit"`
+	// Who put the item on the list, and when (shopping_list_items.created_by / created_at)
+	AddedByID   string    `json:"addedById"`
+	AddedByName string    `json:"addedByName"`
+	AddedAt     time.Time `json:"addedAt"`
 }
 
 type shoppingListCategoryResponse struct {
@@ -759,7 +775,10 @@ i.name,
 COALESCE(c.id::text, ''),
 COALESCE(c.name, 'Uden kategori'),
 sli.quantity::double precision,
-i.unit
+i.unit,
+sli.created_by::text,
+COALESCE(u.name, ''),
+sli.created_at
 FROM shopping_list_items sli
 JOIN items i
 ON i.id = sli.item_id
@@ -767,6 +786,8 @@ ON i.id = sli.item_id
 LEFT JOIN categories c
 ON c.id = i.category_id
    AND c.company_id = i.company_id
+LEFT JOIN users u
+ON u.id = sli.created_by
 WHERE sli.company_id = $1::uuid
   AND i.archived_at IS NULL
 ORDER BY c.name NULLS LAST, i.name`,
@@ -798,6 +819,9 @@ ORDER BY c.name NULLS LAST, i.name`,
 			&categoryName,
 			&entry.Quantity,
 			&entry.Unit,
+			&entry.AddedByID,
+			&entry.AddedByName,
+			&entry.AddedAt,
 		); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success": false,

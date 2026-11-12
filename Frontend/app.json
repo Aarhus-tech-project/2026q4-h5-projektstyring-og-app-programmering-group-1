@@ -27,12 +27,13 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Appen skal bruge adgang til dine billeder, så du kan vælge et profilbillede.",
-          "cameraPermission": "Appen skal bruge adgang til kameraet, så du kan tage et profilbillede.",
+          "photosPermission": "Appen skal bruge adgang til dine billeder, så du kan vælge et profilbillede eller et billede af en vare.",
+          "cameraPermission": "Appen skal bruge adgang til kameraet, så du kan tage et profilbillede eller et billede af en vare.",
           "microphonePermission": false
         }
       ],
-      "expo-image"
+      "expo-image",
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "router": {

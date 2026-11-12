@@ -5,24 +5,32 @@ import styles, { inventoryColors, toneColors } from '../../styles/inventoryStyle
 import { STATUS_TONES, formatNumber, formatUnit, getItemStatus } from '../../utils/inventoryUtils';
 
 // One row in the Varer tab: name, status, "stock / min." and the Brug / Modtag buttons.
-export default function InventoryItemRow({ item, isFirst, isLast, onUse, onReceive, onLongPress }) {
+// Tapping anywhere outside the two buttons opens the item.
+export default function InventoryItemRow({ item, isFirst, isLast, onOpen, onUse, onReceive }) {
     const status = getItemStatus(item);
     const canUse = item.quantity > 0;
     const hasStatus = status.tone !== STATUS_TONES.NONE;
 
     return (
         <Pressable
-            onLongPress={() => onLongPress(item)}
-            delayLongPress={500}
-            accessibilityHint="Hold nede for at arkivere varen"
-            style={[
+            onPress={() => onOpen(item)}
+            // The row itself is not a screen-reader element; the top part below is, so Brug / Modtag stay reachable
+            accessible={false}
+            style={({ pressed }) => [
                 styles.groupRow,
                 styles.itemRow,
                 isFirst && styles.groupRowFirst,
                 isLast && styles.groupRowLast,
                 !isFirst && styles.groupRowDivider,
+                pressed && styles.pressed,
             ]}>
-            <View style={styles.itemTop}>
+            <View
+                style={styles.itemTop}
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel={`${item.name}, ${status.text}`}
+                accessibilityActions={[{ name: 'activate' }]}
+                onAccessibilityAction={() => onOpen(item)}>
                 {item.imageUrl ? (
                     <InventoryItemMarker imageUrl={item.imageUrl} tone={status.tone} />
                 ) : (

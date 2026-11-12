@@ -60,6 +60,31 @@ export function getItemStatus(item) {
 
 export const getCategoryName = (item) => item.category || 'Uden kategori';
 
+// Standard categories every restaurant gets. They are only created in the backend the first time
+// they are used (POST /categories returns the existing one if the name is taken, so it is safe).
+export const DEFAULT_CATEGORIES = ['Kød', 'Frugt og grønt', 'Frostvarer'];
+
+const isDefaultCategory = (name) => DEFAULT_CATEGORIES.some((entry) => entry.toLowerCase() === name.toLowerCase());
+
+// Category choices for the forms: the standard ones first (id is null until used), then the company's own.
+// Each entry: { id, name, isDefault }
+export function buildCategoryOptions(categories) {
+    const byName = new Map(categories.map((category) => [category.name.toLowerCase(), category]));
+
+    const defaults = DEFAULT_CATEGORIES.map((name) => ({
+        id: byName.get(name.toLowerCase())?.id ?? null,
+        name,
+        isDefault: true,
+    }));
+
+    const custom = categories
+        .filter((category) => !isDefaultCategory(category.name))
+        .map((category) => ({ id: category.id, name: category.name, isDefault: false }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'da'));
+
+    return [...defaults, ...custom];
+}
+
 // Quantities come back as numbers that may have decimals (NUMERIC in the database).
 export function formatNumber(value) {
     const number = Number(value) || 0;
@@ -100,6 +125,22 @@ export function getItemSections(items, category, search) {
 
 export const needsAttention = (item) => getItemStatus(item).level > 0;
 
+const MONTHS = ['jan.', 'feb.', 'mar.', 'apr.', 'maj', 'jun.', 'jul.', 'aug.', 'sep.', 'okt.', 'nov.', 'dec.'];
+
+// "15. nov. · om 3 dage" for the item details; null when the item has no batch with an expiry date
+export function formatExpiry(item) {
+    const days = getDaysUntilExpiry(item);
+    if (days === null) return null;
+
+    const [, month, day] = item.nextExpiryDate.split('-').map(Number);
+    const date = `${day}. ${MONTHS[month - 1]}`;
+
+    if (days < -1) return `${date} · udløbet for ${-days} dage siden`;
+    if (days === -1) return `${date} · udløbet i går`;
+    if (days === 0) return `${date} · i dag`;
+    if (days === 1) return `${date} · i morgen`;
+    return `${date} · om ${days} dage`;
+}
 export function getInventoryCounts(items) {
     return {
         [FILTERS.LOW]: items.filter(isLowStock).length,

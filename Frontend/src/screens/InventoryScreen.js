@@ -1,20 +1,38 @@
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ActivityIndicator, Alert, Modal, Pressable, RefreshControl, ScrollView, SectionList, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, SectionList, Text, TextInput, View } from 'react-native';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { ChevronLeft, CircleX, Clock, PackageX, Plus, Search, ShoppingCart, TrendingDown } from 'lucide-react-native';
+import CategoryManager from '../components/inventory/CategoryManager';
 import InventoryItemRow from '../components/inventory/InventoryItemRow';
 import InventoryOverviewRow from '../components/inventory/InventoryOverviewRow';
+import InventorySheet from '../components/inventory/InventorySheet';
 import InventorySummaryCard from '../components/inventory/InventorySummaryCard';
-import ConfirmationModal from '../components/ConfirmationModal';
-import { adjustInventoryStock, createInventoryCategory, createInventoryItem, deleteInventoryItem, getInventoryCategories, getInventoryItems, getShoppingList, receiveInventoryBatch } from '../services/inventoryService';
+import ItemDetails from '../components/inventory/ItemDetails';
+import ItemForm, { FORM_MODES, IMAGE_CHANGE } from '../components/inventory/ItemForm';
+import ReceiveForm from '../components/inventory/ReceiveForm';
+import { getErrorMessage } from '../../http/http';
+import {
+    addShoppingListItem,
+    adjustInventoryStock,
+    createInventoryCategory,
+    createInventoryItem,
+    deleteItemImage,
+    getInventoryCategories,
+    getInventoryItems,
+    getShoppingList,
+    receiveInventoryBatch,
+    updateInventoryItem,
+    updateShoppingListItem,
+    uploadItemImage,
+} from '../services/inventoryService';
 import styles, { inventoryColors } from '../styles/inventoryStyles';
 import {
     STATUS_TONES,
+    buildCategoryOptions,
     byUrgency,
     formatAmount,
     formatNumber,
-    formatUnit,
     getCategoryName,
     getItemSections,
     getItemStatus,
@@ -36,20 +54,26 @@ const CARDS = {
     EXPIRING: 'expiring',
 };
 
+// The Indkøbsliste card opens the shopping list screen; the other cards filter the list under the cards
 const SUMMARY_CARDS = [
-    { key: CARDS.SHOPPING, label: 'Indkøbsliste', icon: ShoppingCart, color: inventoryColors.primary, softColor: inventoryColors.primarySoft },
     { key: CARDS.LOW, label: 'Lav beholdning', icon: TrendingDown, color: inventoryColors.amber, softColor: inventoryColors.amberSoft },
+    { key: CARDS.SHOPPING, label: 'Indkøbsliste', icon: ShoppingCart, color: inventoryColors.primary, softColor: inventoryColors.primarySoft },
     { key: CARDS.OUT, label: 'Ikke på lager', icon: PackageX, color: inventoryColors.red, softColor: inventoryColors.redSoft },
     { key: CARDS.EXPIRING, label: 'Udløber snart', icon: Clock, color: inventoryColors.violet, softColor: inventoryColors.violetSoft },
 ];
 
 const LOW_STOCK_STATUS = { tone: STATUS_TONES.AMBER, text: 'Lav beholdning' };
 
-function getLocalDateString() {
-    const date = new Date();
-    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
-    return date.toISOString().slice(0, 10);
-}
+// What the bottom sheet is showing. DETAILS, EDIT and RECEIVE belong to one item; CREATE and CATEGORIES do not.
+const SHEET_MODES = {
+    DETAILS: 'details',
+    EDIT: 'edit',
+    RECEIVE: 'receive',
+    CREATE: 'create',
+    CATEGORIES: 'categories',
+};
+
+const ITEM_SHEET_MODES = [SHEET_MODES.DETAILS, SHEET_MODES.EDIT, SHEET_MODES.RECEIVE];
 
 // The shopping list endpoint groups lines by category; the overview needs one flat list
 function flattenShoppingList(result) {
@@ -73,25 +97,13 @@ export default function InventoryScreen({ navigation, route }) {
     const hasLoadedItems = useRef(false);
 
     const [activeTab, setActiveTab] = useState(TABS.OVERVIEW);
-    const [selectedCard, setSelectedCard] = useState(CARDS.SHOPPING);
+    const [selectedCard, setSelectedCard] = useState(CARDS.LOW);
     const [search, setSearch] = useState('');
     const [selectedCategory, setSelectedCategory] = useState(null);
 
-    const [receivingItem, setReceivingItem] = useState(null);
-    const [receiptQuantity, setReceiptQuantity] = useState('1');
-    const [purchaseDate, setPurchaseDate] = useState(getLocalDateString());
-    const [expiryDate, setExpiryDate] = useState('');
-    const [isSavingReceipt, setIsSavingReceipt] = useState(false);
-    const [isCreateItemModalVisible, setIsCreateItemModalVisible] = useState(false);
-    const [newItemName, setNewItemName] = useState('');
-    const [newItemUnit, setNewItemUnit] = useState('stk');
-    const [newItemMinQuantity, setNewItemMinQuantity] = useState('0');
-    const [selectedCategoryId, setSelectedCategoryId] = useState('');
-    const [newCategoryName, setNewCategoryName] = useState('');
-    const [isSavingItem, setIsSavingItem] = useState(false);
-    const [isSavingCategory, setIsSavingCategory] = useState(false);
-    const [itemToDelete, setItemToDelete] = useState(null);
-    const [isDeletingItem, setIsDeletingItem] = useState(false);
+    // { itemId, mode, backToDetails } — backToDetails: return to the item details after receiving/editing
+    const [sheet, setSheet] = useState(null);
+    const [isAddingToList, setIsAddingToList] = useState(false);
 
     // silent = refresh in the background without replacing the screen with a spinner
     const loadItems = useCallback(async ({ silent = false } = {}) => {
@@ -149,6 +161,28 @@ export default function InventoryScreen({ navigation, route }) {
         [items]
     );
 
+    const shoppingByItemId = useMemo(
+        () => Object.fromEntries(shoppingItems.map((entry) => [entry.itemId, entry])),
+        [shoppingItems]
+    );
+
+    // Always read the item from the latest list, so the sheet shows fresh numbers after Brug / Modtag
+    const sheetItem = sheet?.itemId ? itemsById[sheet.itemId] : null;
+    const isItemSheet = sheet !== null && ITEM_SHEET_MODES.includes(sheet.mode);
+    // An item sheet closes by itself if the item disappears (e.g. archived on another phone)
+    const isSheetVisible = sheet !== null && (!isItemSheet || sheetItem != null);
+
+    const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories]);
+
+    const itemCountByCategory = useMemo(() => {
+        const counts = {};
+        items.forEach((item) => {
+            const name = getCategoryName(item);
+            counts[name] = (counts[name] ?? 0) + 1;
+        });
+        return counts;
+    }, [items]);
+
     const attentionCount = useMemo(() => items.filter(needsAttention).length, [items]);
 
     const cardCounts = useMemo(() => ({
@@ -160,23 +194,6 @@ export default function InventoryScreen({ navigation, route }) {
 
     // Rows shown under the cards for the selected card
     const overviewRows = useMemo(() => {
-        if (selectedCard === CARDS.SHOPPING) {
-            return shoppingItems
-                .map((entry) => {
-                    const item = itemsById[entry.itemId];
-                    return {
-                        key: entry.id,
-                        name: entry.name,
-                        imageUrl: item?.imageUrl,
-                        status: item ? getItemStatus(item) : { tone: STATUS_TONES.NONE, text: entry.categoryName },
-                        level: item ? getItemStatus(item).level : 0,
-                        amount: `Køb ${formatAmount(entry.quantity, entry.unit)}`,
-                        amountColor: inventoryColors.primary,
-                    };
-                })
-                .sort((a, b) => (b.level - a.level) || a.name.localeCompare(b.name, 'da'));
-        }
-
         const matches = {
             [CARDS.LOW]: isLowStock,
             [CARDS.OUT]: isOutOfStock,
@@ -188,13 +205,14 @@ export default function InventoryScreen({ navigation, route }) {
             .sort(byUrgency)
             .map((item) => ({
                 key: item.id,
+                itemId: item.id,
                 name: item.name,
                 imageUrl: item.imageUrl,
                 status: selectedCard === CARDS.LOW ? LOW_STOCK_STATUS : getItemStatus(item),
                 amount: `${formatNumber(item.quantity)} / min. ${formatAmount(item.minQuantity, item.unit)}`,
                 amountColor: item.quantity > 0 ? inventoryColors.text : inventoryColors.red,
             }));
-    }, [selectedCard, shoppingItems, items, itemsById]);
+    }, [selectedCard, items]);
 
     const categoryNames = useMemo(() => {
         const names = new Set(categories.map((category) => category.name));
@@ -227,128 +245,130 @@ export default function InventoryScreen({ navigation, route }) {
         }
     }
 
-    function openReceiveDialog(item) {
-        setReceivingItem(item);
-        setReceiptQuantity('1');
-        setPurchaseDate(getLocalDateString());
-        setExpiryDate('');
+    const openItem = (item) => setSheet({ itemId: item.id, mode: SHEET_MODES.DETAILS });
+    // Stable so the sheet's drag handler is not rebuilt on every render
+    const closeSheet = useCallback(() => setSheet(null), []);
+
+    // From the row's "Modtag" button the sheet closes after saving; from the details it goes back to them
+    const openReceive = (item, backToDetails = false) =>
+        setSheet({ itemId: item.id, mode: SHEET_MODES.RECEIVE, backToDetails });
+
+    const showDetails = () => setSheet((current) => current && { ...current, mode: SHEET_MODES.DETAILS });
+
+    async function saveReceivedBatch(batch) {
+        // The form shows the error itself, so let it throw
+        await receiveInventoryBatch(companyId, sheet.itemId, batch);
+        await loadItems({ silent: true });
+
+        if (sheet.backToDetails) showDetails();
+        else closeSheet();
     }
 
-    async function saveReceivedBatch() {
-        const quantity = Number(receiptQuantity.replace(',', '.'));
-        const datePattern = /^\d{4}-\d{2}-\d{2}$/;
-
-        if (!Number.isFinite(quantity) || quantity <= 0) {
-            Alert.alert('Ugyldigt antal', 'Indtast et antal, der er større end nul.');
-            return;
-        }
-
-        if (!datePattern.test(purchaseDate) || !datePattern.test(expiryDate)) {
-            Alert.alert('Ugyldig dato', 'Brug datoformatet ÅÅÅÅ-MM-DD.');
-            return;
-        }
-
-        if (expiryDate < purchaseDate) {
-            Alert.alert('Ugyldig dato', 'Udløbsdatoen må ikke ligge før købsdatoen.');
-            return;
-        }
-
-        setIsSavingReceipt(true);
+    async function saveItemChanges(changes, imageChange) {
+        const itemId = sheet.itemId;
 
         try {
-            await receiveInventoryBatch(companyId, receivingItem.id, {
-                quantity,
-                purchaseDate,
-                expiryDate,
-            });
-            setReceivingItem(null);
-            await loadItems({ silent: true });
+            await updateInventoryItem(companyId, itemId, changes);
         } catch (error) {
-            console.error('Could not record received batch:', error);
-            Alert.alert('Fejl', 'Varemodtagelsen kunne ikke registreres.');
-        } finally {
-            setIsSavingReceipt(false);
+            Alert.alert('Fejl', error.message || 'Ændringerne kunne ikke gemmes.');
+            return;
+        }
+
+        try {
+            if (imageChange?.type === IMAGE_CHANGE.NEW) {
+                await uploadItemImage(companyId, itemId, imageChange.asset);
+            } else if (imageChange?.type === IMAGE_CHANGE.REMOVE) {
+                await deleteItemImage(companyId, itemId);
+            }
+        } catch (error) {
+            Alert.alert(
+                'Billedet blev ikke gemt',
+                getErrorMessage(error, {
+                    413: 'Ændringerne er gemt, men billedet er for stort. Vælg et billede under 5 MB.',
+                    415: 'Ændringerne er gemt, men billedet skal være JPEG, PNG eller WebP.',
+                    fallback: 'Ændringerne er gemt, men billedet kunne ikke gemmes. Prøv igen.',
+                }),
+            );
+        }
+
+        await Promise.all([loadItems({ silent: true }), loadShoppingList()]);
+        showDetails();
+    }
+
+    async function createCategory(name) {
+        const category = await createInventoryCategory(companyId, name);
+        setCategories((current) =>
+            current.some((entry) => entry.id === category.id) ? current : [...current, category]
+        );
+        return category;
+    }
+
+    // − / + on an item that is already on the shopping list (optimistic, reloads if the server says no)
+    async function changeShoppingQuantity(entry, quantity) {
+        if (quantity < 1) return;
+
+        setShoppingItems((current) =>
+            current.map((other) => (other.id === entry.id ? { ...other, quantity } : other))
+        );
+
+        try {
+            await updateShoppingListItem(companyId, entry.id, quantity);
+        } catch (error) {
+            Alert.alert('Fejl', error.message || 'Antallet på indkøbslisten kunne ikke ændres.');
+            loadShoppingList();
         }
     }
 
-    function openCreateItemModal() {
-        setNewItemName('');
-        setNewItemUnit('stk');
-        setNewItemMinQuantity('0');
-        setNewCategoryName('');
-        setSelectedCategoryId(categories[0]?.id ?? '');
-        setIsCreateItemModalVisible(true);
+    async function addToShoppingList(quantity) {
+        setIsAddingToList(true);
+        try {
+            await addShoppingListItem(companyId, sheet.itemId, quantity);
+            await loadShoppingList();
+        } catch (error) {
+            Alert.alert('Fejl', error.message || 'Varen kunne ikke tilføjes til indkøbslisten.');
+        } finally {
+            setIsAddingToList(false);
+        }
+    }
+
+    function openCreateItem() {
+        setSheet({ mode: SHEET_MODES.CREATE });
         loadCategories();
     }
 
-    async function saveNewCategory() {
-        const name = newCategoryName.trim();
-        if (!name) {
-            Alert.alert('Fejl', 'Skriv et kategorinavn.');
-            return;
-        }
+    const openCategories = () => setSheet({ mode: SHEET_MODES.CATEGORIES });
 
-        setIsSavingCategory(true);
+    const openShoppingList = () => navigation.navigate('ShoppingList', { companyId, companyName });
+
+    // Screen 5: create the item, then upload the optional picture, then show the new item's details
+    async function createItem(changes, imageChange) {
+        let itemId;
         try {
-            const category = await createInventoryCategory(companyId, name);
-            setCategories((current) => {
-                const exists = current.some((entry) => entry.id === category.id);
-                return exists ? current : [...current, category];
-            });
-            setSelectedCategoryId(category.id);
-            setNewCategoryName('');
-        } catch (error) {
-            Alert.alert('Fejl', error.message || 'Kategorien kunne ikke oprettes.');
-        } finally {
-            setIsSavingCategory(false);
-        }
-    }
-
-    async function saveNewItem() {
-        const name = newItemName.trim();
-        const unit = newItemUnit.trim();
-        const minQuantity = Number(newItemMinQuantity.replace(',', '.'));
-
-        if (!name || !unit || !selectedCategoryId || !Number.isFinite(minQuantity) || minQuantity < 0) {
-            Alert.alert('Fejl', 'Udfyld varenavn, enhed, kategori og et gyldigt minimumsantal.');
-            return;
-        }
-
-        setIsSavingItem(true);
-        try {
-            await createInventoryItem(companyId, {
-                name,
-                categoryId: selectedCategoryId,
-                unit,
-                minQuantity,
-            });
-            setIsCreateItemModalVisible(false);
-            await loadItems({ silent: true });
-            Alert.alert('Oprettet', `${name} er tilføjet til lageret.`);
+            const created = await createInventoryItem(companyId, changes);
+            itemId = created?.id;
         } catch (error) {
             Alert.alert('Fejl', error.message || 'Varen kunne ikke oprettes.');
-        } finally {
-            setIsSavingItem(false);
-        }
-    }
-
-    async function confirmDeleteItem() {
-        if (!itemToDelete || isDeletingItem) {
             return;
         }
 
-        setIsDeletingItem(true);
-        try {
-            await deleteInventoryItem(companyId, itemToDelete.id);
-            setItemToDelete(null);
-            await Promise.all([loadItems({ silent: true }), loadShoppingList()]);
-            Alert.alert('Arkiveret', `${itemToDelete.name} er fjernet fra lageret og indkøbslisten.`);
-        } catch (error) {
-            setItemToDelete(null);
-            Alert.alert('Fejl', error.message || 'Varen kunne ikke arkiveres.');
-        } finally {
-            setIsDeletingItem(false);
+        if (itemId && imageChange?.type === IMAGE_CHANGE.NEW) {
+            try {
+                await uploadItemImage(companyId, itemId, imageChange.asset);
+            } catch (error) {
+                Alert.alert(
+                    'Billedet blev ikke gemt',
+                    getErrorMessage(error, {
+                        413: 'Varen er oprettet, men billedet er for stort. Vælg et billede under 5 MB.',
+                        415: 'Varen er oprettet, men billedet skal være JPEG, PNG eller WebP.',
+                        fallback: 'Varen er oprettet, men billedet kunne ikke gemmes. Prøv igen under Rediger.',
+                    }),
+                );
+            }
         }
+
+        await loadItems({ silent: true });
+        // Showing the new item confirms it was created and lets the user receive goods straight away
+        setSheet(itemId ? { itemId, mode: SHEET_MODES.DETAILS } : null);
     }
 
     const selectedCardConfig = SUMMARY_CARDS.find((card) => card.key === selectedCard);
@@ -359,25 +379,27 @@ export default function InventoryScreen({ navigation, route }) {
     function renderHeader() {
         return (
             <View style={styles.header}>
-                <Pressable
-                    style={styles.backButton}
-                    onPress={() => navigation.goBack()}
-                    accessibilityRole="button"
-                    accessibilityLabel="Gå tilbage">
-                    <ChevronLeft size={26} color={inventoryColors.primary} />
-                </Pressable>
+                <View style={styles.titleRow}>
+                    <Pressable
+                        style={styles.backButton}
+                        onPress={() => navigation.goBack()}
+                        accessibilityRole="button"
+                        accessibilityLabel="Gå tilbage">
+                        <ChevronLeft size={26} color={inventoryColors.primary} />
+                    </Pressable>
 
-                <View style={styles.titleBlock}>
-                    <Text style={styles.title} accessibilityRole="header">Lager</Text>
-                    <Text style={styles.subtitle} numberOfLines={1}>
-                        {`${items.length} varer`}
-                        {attentionCount > 0 ? (
-                            <>
-                                {' · '}
-                                <Text style={styles.subtitleAlert}>{`${attentionCount} kræver handling`}</Text>
-                            </>
-                        ) : ` · ${companyName}`}
-                    </Text>
+                    <View style={styles.titleBlock}>
+                        <Text style={styles.title} accessibilityRole="header">Lager</Text>
+                        <Text style={styles.subtitle} numberOfLines={1}>
+                            {`${items.length} varer`}
+                            {attentionCount > 0 ? (
+                                <>
+                                    {' · '}
+                                    <Text style={styles.subtitleAlert}>{`${attentionCount} kræver handling`}</Text>
+                                </>
+                            ) : ` · ${companyName}`}
+                        </Text>
+                    </View>
                 </View>
 
                 <View style={styles.tabs} accessibilityRole="tablist">
@@ -443,6 +465,13 @@ export default function InventoryScreen({ navigation, route }) {
                                     </Pressable>
                                 );
                             })}
+                            <Pressable
+                                onPress={openCategories}
+                                accessibilityRole="button"
+                                accessibilityLabel="Administrer kategorier"
+                                style={({ pressed }) => [styles.addChip, pressed && styles.pressed]}>
+                                <Plus size={18} strokeWidth={2.4} color={inventoryColors.primary} />
+                            </Pressable>
                         </ScrollView>
                     </>
                 )}
@@ -463,7 +492,8 @@ export default function InventoryScreen({ navigation, route }) {
                             color={card.color}
                             softColor={card.softColor}
                             isSelected={selectedCard === card.key}
-                            onPress={() => setSelectedCard(card.key)}
+                            onPress={card.key === CARDS.SHOPPING ? openShoppingList : () => setSelectedCard(card.key)}
+                            opensScreen={card.key === CARDS.SHOPPING}
                         />
                     ))}
                 </View>
@@ -472,14 +502,6 @@ export default function InventoryScreen({ navigation, route }) {
                     <Text style={styles.sectionTitle} accessibilityRole="header">
                         {`${selectedCardConfig.label} · ${overviewRows.length}`}
                     </Text>
-                    {selectedCard === CARDS.SHOPPING && overviewRows.length > 0 && (
-                        <Pressable
-                            onPress={() => navigation.navigate('ShoppingList', { companyId, companyName })}
-                            accessibilityRole="button"
-                            hitSlop={8}>
-                            <Text style={styles.sectionLink}>Marker som købt</Text>
-                        </Pressable>
-                    )}
                 </View>
 
                 <View style={styles.group}>
@@ -497,6 +519,7 @@ export default function InventoryScreen({ navigation, route }) {
                                 amount={row.amount}
                                 amountColor={row.amountColor}
                                 isFirst={index === 0}
+                                onPress={() => setSheet({ itemId: row.itemId, mode: SHEET_MODES.DETAILS })}
                             />
                         ))
                     )}
@@ -528,9 +551,9 @@ export default function InventoryScreen({ navigation, route }) {
                         item={item}
                         isFirst={index === 0}
                         isLast={index === section.data.length - 1}
+                        onOpen={openItem}
                         onUse={takeOneFromStock}
-                        onReceive={openReceiveDialog}
-                        onLongPress={setItemToDelete}
+                        onReceive={openReceive}
                     />
                 )}
                 ListEmptyComponent={
@@ -569,7 +592,7 @@ export default function InventoryScreen({ navigation, route }) {
             )}
 
             <Pressable
-                onPress={openCreateItemModal}
+                onPress={openCreateItem}
                 accessibilityRole="button"
                 accessibilityLabel="Opret vare"
                 style={({ pressed }) => [styles.fab, { bottom: insets.bottom + 16 }, pressed && styles.pressed]}>
@@ -577,180 +600,53 @@ export default function InventoryScreen({ navigation, route }) {
                 <Text style={styles.fabText}>Opret vare</Text>
             </Pressable>
 
-            <Modal
-                visible={receivingItem !== null}
-                transparent
-                animationType="fade"
-                onRequestClose={() => !isSavingReceipt && setReceivingItem(null)}>
-                <View style={{ flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(0, 0, 0, 0.45)' }}>
-                    <View style={{ padding: 20, borderRadius: 16, backgroundColor: 'white' }}>
-                        <Text style={{ marginBottom: 8, fontSize: 20, fontWeight: '700', color: inventoryColors.text }}>
-                            Registrer varemodtagelse
-                        </Text>
-                        <Text style={{ marginBottom: 16, color: inventoryColors.muted }}>
-                            {receivingItem?.name}
-                        </Text>
-
-                        <Text style={{ marginBottom: 4, color: inventoryColors.text }}>
-                            {`Antal (${receivingItem ? formatUnit(receivingItem.unit, 2) : ''})`}
-                        </Text>
-                        <TextInput
-                            value={receiptQuantity}
-                            onChangeText={setReceiptQuantity}
-                            keyboardType="decimal-pad"
-                            style={{ marginBottom: 12, padding: 12, borderWidth: 1, borderColor: inventoryColors.muted, borderRadius: 8 }}
-                        />
-
-                        <Text style={{ marginBottom: 4, color: inventoryColors.text }}>Købsdato (ÅÅÅÅ-MM-DD)</Text>
-                        <TextInput
-                            value={purchaseDate}
-                            onChangeText={setPurchaseDate}
-                            placeholder="2026-11-05"
-                            style={{ marginBottom: 12, padding: 12, borderWidth: 1, borderColor: inventoryColors.muted, borderRadius: 8 }}
-                        />
-
-                        <Text style={{ marginBottom: 4, color: inventoryColors.text }}>Udløbsdato (ÅÅÅÅ-MM-DD)</Text>
-                        <TextInput
-                            value={expiryDate}
-                            onChangeText={setExpiryDate}
-                            placeholder="2026-11-12"
-                            style={{ marginBottom: 16, padding: 12, borderWidth: 1, borderColor: inventoryColors.muted, borderRadius: 8 }}
-                        />
-
-                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
-                            <Pressable
-                                disabled={isSavingReceipt}
-                                onPress={() => setReceivingItem(null)}
-                                style={{ padding: 12 }}>
-                                <Text style={{ color: inventoryColors.muted }}>Annuller</Text>
-                            </Pressable>
-                            <Pressable
-                                disabled={isSavingReceipt}
-                                onPress={saveReceivedBatch}
-                                style={{ padding: 12, borderRadius: 8, backgroundColor: inventoryColors.primary }}>
-                                <Text style={{ color: 'white', fontWeight: '600' }}>
-                                    {isSavingReceipt ? 'Gemmer…' : 'Gem varemodtagelse'}
-                                </Text>
-                            </Pressable>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-
-            <Modal
-                visible={isCreateItemModalVisible}
-                transparent
-                animationType="fade"
-                onRequestClose={() => !isSavingItem && setIsCreateItemModalVisible(false)}>
-                <View style={{ flex: 1, justifyContent: 'center', padding: 20, backgroundColor: 'rgba(0, 0, 0, 0.45)' }}>
-                    <View style={{ maxHeight: '90%', padding: 20, borderRadius: 16, backgroundColor: 'white' }}>
-                        <ScrollView keyboardShouldPersistTaps="handled">
-                            <Text style={{ marginBottom: 16, fontSize: 20, fontWeight: '700', color: inventoryColors.text }}>
-                                Opret vare
-                            </Text>
-
-                            <Text style={{ marginBottom: 4, color: inventoryColors.text }}>Varenavn</Text>
-                            <TextInput
-                                value={newItemName}
-                                onChangeText={setNewItemName}
-                                placeholder="F.eks. Tomater"
-                                style={{ marginBottom: 12, padding: 12, borderWidth: 1, borderColor: inventoryColors.muted, borderRadius: 8 }}
-                            />
-
-                            <Text style={{ marginBottom: 4, color: inventoryColors.text }}>Enhed</Text>
-                            <TextInput
-                                value={newItemUnit}
-                                onChangeText={setNewItemUnit}
-                                placeholder="stk, kg eller liter"
-                                style={{ marginBottom: 12, padding: 12, borderWidth: 1, borderColor: inventoryColors.muted, borderRadius: 8 }}
-                            />
-
-                            <Text style={{ marginBottom: 4, color: inventoryColors.text }}>Minimumsantal</Text>
-                            <TextInput
-                                value={newItemMinQuantity}
-                                onChangeText={setNewItemMinQuantity}
-                                keyboardType="decimal-pad"
-                                style={{ marginBottom: 16, padding: 12, borderWidth: 1, borderColor: inventoryColors.muted, borderRadius: 8 }}
-                            />
-
-                            <Text style={{ marginBottom: 8, color: inventoryColors.text, fontWeight: '600' }}>
-                                Vælg kategori
-                            </Text>
-
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-                                {categories.map((category) => (
-                                    <Pressable
-                                        key={category.id}
-                                        onPress={() => setSelectedCategoryId(category.id)}
-                                        style={{
-                                            paddingHorizontal: 12,
-                                            paddingVertical: 9,
-                                            borderRadius: 18,
-                                            backgroundColor: selectedCategoryId === category.id
-                                                ? inventoryColors.primary
-                                                : '#EEF1EF',
-                                        }}>
-                                        <Text style={{
-                                            color: selectedCategoryId === category.id ? 'white' : inventoryColors.text,
-                                            fontWeight: '600',
-                                        }}>
-                                            {category.name}
-                                        </Text>
-                                    </Pressable>
-                                ))}
-                            </View>
-
-                            <Text style={{ marginBottom: 4, color: inventoryColors.text }}>Opret ny kategori</Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 18 }}>
-                                <TextInput
-                                    value={newCategoryName}
-                                    onChangeText={setNewCategoryName}
-                                    placeholder="F.eks. Grøntsager eller Kød"
-                                    style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: inventoryColors.muted, borderRadius: 8 }}
-                                />
-                                <Pressable
-                                    disabled={isSavingCategory}
-                                    onPress={saveNewCategory}
-                                    style={{ padding: 12, borderRadius: 8, backgroundColor: inventoryColors.blue }}>
-                                    <Text style={{ color: 'white', fontWeight: '600' }}>
-                                        {isSavingCategory ? 'Gemmer…' : 'Tilføj'}
-                                    </Text>
-                                </Pressable>
-                            </View>
-
-                            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
-                                <Pressable
-                                    disabled={isSavingItem}
-                                    onPress={() => setIsCreateItemModalVisible(false)}
-                                    style={{ padding: 12 }}>
-                                    <Text style={{ color: inventoryColors.muted }}>Annuller</Text>
-                                </Pressable>
-                                <Pressable
-                                    disabled={isSavingItem}
-                                    onPress={saveNewItem}
-                                    style={{ padding: 12, borderRadius: 8, backgroundColor: inventoryColors.primary }}>
-                                    <Text style={{ color: 'white', fontWeight: '600' }}>
-                                        {isSavingItem ? 'Gemmer…' : 'Gem vare'}
-                                    </Text>
-                                </Pressable>
-                            </View>
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
-
-            <ConfirmationModal
-                visible={itemToDelete !== null}
-                variant="danger"
-                title="Arkivér vare?"
-                message={itemToDelete
-                    ? `Vil du arkivere ${itemToDelete.name}? Varen fjernes fra det aktive lager og indkøbslisten. Lagerhistorikken bevares.`
-                    : ''}
-                confirmText={isDeletingItem ? 'Arkiverer…' : 'Arkivér vare'}
-                cancelText="Annuller"
-                onConfirm={confirmDeleteItem}
-                onCancel={() => !isDeletingItem && setItemToDelete(null)}
-            />
+            <InventorySheet visible={isSheetVisible} onClose={closeSheet}>
+                {sheet?.mode === SHEET_MODES.CREATE && (
+                    <ItemForm
+                        mode={FORM_MODES.CREATE}
+                        categoryOptions={categoryOptions}
+                        onCancel={closeSheet}
+                        onSave={createItem}
+                        onCreateCategory={createCategory}
+                    />
+                )}
+                {sheet?.mode === SHEET_MODES.CATEGORIES && (
+                    <CategoryManager
+                        categoryOptions={categoryOptions}
+                        itemCounts={itemCountByCategory}
+                        onCreateCategory={createCategory}
+                        onDone={closeSheet}
+                    />
+                )}
+                {sheetItem && sheet.mode === SHEET_MODES.DETAILS && (
+                    <ItemDetails
+                        item={sheetItem}
+                        shoppingEntry={shoppingByItemId[sheetItem.id]}
+                        isAddingToList={isAddingToList}
+                        onEdit={() => setSheet({ ...sheet, mode: SHEET_MODES.EDIT })}
+                        onReceive={() => openReceive(sheetItem, true)}
+                        onAddToShoppingList={addToShoppingList}
+                        onChangeShoppingQuantity={changeShoppingQuantity}
+                    />
+                )}
+                {sheetItem && sheet.mode === SHEET_MODES.EDIT && (
+                    <ItemForm
+                        mode={FORM_MODES.EDIT}
+                        item={sheetItem}
+                        categoryOptions={categoryOptions}
+                        onCancel={showDetails}
+                        onSave={saveItemChanges}
+                        onCreateCategory={createCategory}
+                    />
+                )}
+                {sheetItem && sheet.mode === SHEET_MODES.RECEIVE && (
+                    <ReceiveForm
+                        item={sheetItem}
+                        onCancel={sheet.backToDetails ? showDetails : closeSheet}
+                        onSave={saveReceivedBatch}
+                    />
+                )}
+            </InventorySheet>
         </SafeAreaView>
     );
 }

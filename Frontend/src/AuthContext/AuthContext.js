@@ -175,8 +175,10 @@ export function AuthProvider({ children }) {
             changePassword,
             uploadAvatar,
             avatarSource,
+            // Needed for images that are loaded straight from the API (they require the Authorization header)
+            token,
         }),
-        [user, companies, isLoading, avatarSource]
+        [user, companies, isLoading, avatarSource, token]
     );
 
     return (
