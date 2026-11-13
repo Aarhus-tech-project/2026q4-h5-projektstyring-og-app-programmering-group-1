@@ -2,13 +2,15 @@ import { useCallback, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Building2, CalendarDays, ChevronLeft, Lock, MapPin, SearchX, Users, Mail } from 'lucide-react-native';
+import { Building2, CalendarDays, ChevronLeft, Lock, MapPin, SearchX, Users, Mail, UserPlus } from 'lucide-react-native';
 import styles, { companiesColors, roleColors } from '../styles/companiesStyles';
-import { getCompanyDetails, getCompanyInvitations } from '../services/companyService';
+import { getCompanyDetails, getCompanyInvitations, cancelInvitation } from '../services/companyService';
 import { getErrorMessage } from '../../http/http';
-import { formatDate, getInitials, getRoleLabel } from '../utils/companyRoles';
+import { formatDate, getInitials } from '../utils/companyRoles';
 import { useAuth } from '../AuthContext/AuthContext';
 import RoleBadge from '../components/RoleBadge';
+import InvitationModal from '../components/InvitationModal';
+
 
 // Adgangsfejl får deres egen skærm, så brugeren ikke bare ser "prøv igen"
 const ACCESS_ERRORS = {
@@ -36,6 +38,8 @@ export default function CompanyDetailScreen({ navigation, route }) {
 
     const [invitations, setInvitations] = useState([]);
     const [invitationsError, setInvitationsError] = useState(null);
+    const [isInvitationsVisible, setIsInvitationsVisible] = useState(false);
+
 
     const loadDetails = useCallback(async ({ isRefresh = false } = {}) => {
         if (!companyId) {
@@ -95,6 +99,14 @@ export default function CompanyDetailScreen({ navigation, route }) {
         setLoading(true);
         loadDetails();
     };
+
+    const handleCancelInvitation = async (invitation) => {
+        try {
+            await cancelInvitation(companyId, invitation.id);
+        } finally {
+            await loadDetails();
+        }
+    }
 
     const renderContent = () => {
         if (loading) {
@@ -157,6 +169,29 @@ export default function CompanyDetailScreen({ navigation, route }) {
                 }>
                 <CompanyInfoCard company={company} />
 
+                <View style={styles.actionRow}>
+                    <Pressable
+                        style={({ pressed }) => [styles.actionButton, styles.actionButtonPrimary, pressed && styles.pressed]}
+                        onPress={() => {}}
+                        accessibilityRole="button">
+                            <UserPlus size={18} color="#FFFFFF" />
+                            <Text style={styles.actionButtonTextPrimary}>Inviter</Text>
+                    </Pressable>
+
+                    <Pressable
+                        style={({ pressed }) => [styles.actionButton, styles.actionButtonSecondary, pressed && styles.pressed]}
+                        onPress={() => setIsInvitationsVisible(true)}
+                        accessibilityRole="button"
+                        accessibilityLabel={
+                            invitationsError ? 'Vis invitationer' : `Vis invitationer, ${invitations.length} afventende`
+                        }>
+                        <Mail size={18} color={companiesColors.text} />
+                        <Text style={styles.actionButtonTextSecondary}>
+                            {invitationsError ? 'Vis invitationer' : `Invitationer (${invitations.length})`}
+                        </Text>
+                    </Pressable>
+                </View>
+
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle} accessibilityRole="header">Medarbejdere</Text>
                     <Text style={styles.sectionCount}>{members.length}</Text>
@@ -182,12 +217,6 @@ export default function CompanyDetailScreen({ navigation, route }) {
                         ))
                     )}
                 </View>
-                <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle} accissibilityRole="header">Invitationer</Text>
-                    {!invitationsError && <Text style={styles.sectionCount}>{invitations.length}</Text>}
-                </View>
-
-                <InvitationList invitations={invitations} error={invitationsError} />
             </ScrollView>
         );
     };
@@ -207,6 +236,14 @@ export default function CompanyDetailScreen({ navigation, route }) {
             </View>
 
             {renderContent()}
+
+            <InvitationModal
+                visible={isInvitationsVisible}
+                invitations={invitations}
+                error={invitationsError}
+                onClose={() => setIsInvitationsVisible(false)}
+                onCancelInvitation={handleCancelInvitation}
+            />
         </SafeAreaView>
     );
 }

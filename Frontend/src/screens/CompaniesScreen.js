@@ -8,6 +8,7 @@ import { getManagedCompanies } from '../services/companyService';
 import { getErrorMessage } from '../../http/http';
 import { getInitials } from '../utils/companyRoles';
 import RoleBadge from '../components/RoleBadge';
+import InvitationModal from '../components/InvitationModal';
 
 export default function CompaniesScreen({ navigation }) {
     const [companies, setCompanies] = useState([]);
@@ -124,7 +125,6 @@ export default function CompaniesScreen({ navigation }) {
                         : 'Virksomheder hvor du er leder'}
                 </Text>
             </View>
-
             {renderContent()}
         </SafeAreaView>
     );
