@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { Check, ChevronLeft, Lock, X } from 'lucide-react-native';
+import { Check, ChevronLeft, Lock, Minus, Plus, X } from 'lucide-react-native';
 import { useAuth } from '../AuthContext/AuthContext';
 import { getErrorMessage } from '../../http/http';
-import { deleteShoppingListItem, getShoppingList } from '../services/inventoryService';
+import { deleteShoppingListItem, getShoppingList, updateShoppingListItem } from '../services/inventoryService';
 import styles, { inventoryColors } from '../styles/inventoryStyles';
 import { isCompanyManager } from '../utils/companyRoles';
 import { formatAmount } from '../utils/inventoryUtils';
@@ -173,6 +173,23 @@ export default function ShoppingListScreen({ navigation, route }) {
     const checkedCount = checkedIds.filter((id) => visibleIds.includes(id)).length;
     const allChecked = lineCount > 0 && checkedCount === lineCount;
 
+    // − / + on a line: update the number straight away, and reload if the server says no
+    async function changeLineQuantity(entry, quantity) {
+        if (quantity < 1) return;
+
+        setCategories((current) => current.map((category) => ({
+            ...category,
+            items: (category.items || []).map((other) => (other.id === entry.id ? { ...other, quantity } : other)),
+        })));
+
+        try {
+            await updateShoppingListItem(companyId, entry.id, quantity);
+        } catch (error) {
+            showToast(getErrorMessage(error, { fallback: 'Antallet kunne ikke ændres.' }));
+            loadShoppingList();
+        }
+    }
+
     function toggleLine(id) {
         setCheckedIds((current) => (current.includes(id) ? current.filter((other) => other !== id) : [...current, id]));
     }
@@ -208,16 +225,15 @@ export default function ShoppingListScreen({ navigation, route }) {
         const addedLabel = entry.addedByName ? `, tilføjet af ${entry.addedById === user?.id ? 'dig' : entry.addedByName}` : '';
 
         const content = (
-            <>
-                <View style={styles.itemText}>
-                    <Text style={[styles.itemName, isChecked && styles.lineChecked]} numberOfLines={1}>{entry.name}</Text>
-                    {renderAddedBy(entry)}
-                </View>
-                <Text style={[styles.overviewAmount, { color: isChecked ? inventoryColors.subtle : inventoryColors.primary }]}>
-                    {amount}
-                </Text>
-            </>
+            <View style={styles.itemText}>
+                <Text style={[styles.itemName, isChecked && styles.lineChecked]} numberOfLines={1}>{entry.name}</Text>
+                {renderAddedBy(entry)}
+            </View>
         );
+
+        const quantity = Number(entry.quantity);
+        // The amount never goes below 1 here; removing the line is what ✕ is for
+        const canDecrease = quantity > 1;
 
         return (
             <View key={entry.id} style={[styles.shoppingLine, index > 0 && styles.groupRowDivider]}>
@@ -238,6 +254,33 @@ export default function ShoppingListScreen({ navigation, route }) {
                         {content}
                     </View>
                 )}
+                {/* − / + change the amount to buy (outside the checkbox area, so they don't tick the line) */}
+                <View style={styles.lineStepper}>
+                    <Pressable
+                        onPress={() => changeLineQuantity(entry, quantity - 1)}
+                        disabled={!canDecrease}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Køb færre ${entry.name}`}
+                        accessibilityState={{ disabled: !canDecrease }}
+                        hitSlop={4}
+                        style={({ pressed }) => [styles.lineStepperButton, pressed && styles.pressed]}>
+                        <Minus size={16} strokeWidth={2.6} color={canDecrease ? inventoryColors.text : inventoryColors.disabled} />
+                    </Pressable>
+                    <Text
+                        style={[styles.lineStepperValue, isChecked && { color: inventoryColors.subtle }]}
+                        accessibilityLabel={`${amount} ${entry.name} på listen`}
+                        accessibilityLiveRegion="polite">
+                        {amount}
+                    </Text>
+                    <Pressable
+                        onPress={() => changeLineQuantity(entry, quantity + 1)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Køb flere ${entry.name}`}
+                        hitSlop={4}
+                        style={({ pressed }) => [styles.lineStepperButton, pressed && styles.pressed]}>
+                        <Plus size={16} strokeWidth={2.6} color={inventoryColors.primary} />
+                    </Pressable>
+                </View>
                 <Pressable
                     onPress={() => removeLine(entry)}
                     accessibilityRole="button"

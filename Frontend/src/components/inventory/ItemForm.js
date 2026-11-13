@@ -137,10 +137,14 @@ export default function ItemForm({ mode = FORM_MODES.EDIT, item = null, category
 
     async function save() {
         const trimmedName = name.trim();
-        if (!trimmedName) {
-            setNameError('Varen skal have et navn.');
-            return;
-        }
+        // Show every missing field at once, so the user can fix them in one go
+        const missingName = !trimmedName;
+        // A new item must have a category
+        const missingCategory = isCreate && !categoryName;
+
+        if (missingName) setNameError('Varen skal have et navn.');
+        if (missingCategory) setCategoryError('Vælg en kategori.');
+        if (missingName || missingCategory) return;
 
         setIsSaving(true);
         try {
@@ -220,14 +224,19 @@ export default function ItemForm({ mode = FORM_MODES.EDIT, item = null, category
                 </View>
 
                 <View style={styles.field}>
-                    <Text style={styles.fieldLabel}>Kategori</Text>
+                    <Text style={styles.fieldLabel}>
+                        Kategori{isCreate ? <Text style={{ color: inventoryColors.red }}> *</Text> : null}
+                    </Text>
                     <View style={styles.chipWrap}>
                         {categoryOptions.map((category) => {
                             const isActive = categoryName === category.name;
                             return (
                                 <Pressable
                                     key={category.name}
-                                    onPress={() => setCategoryName(isActive ? null : category.name)}
+                                    onPress={() => {
+                                        setCategoryName(isActive ? null : category.name);
+                                        setCategoryError('');
+                                    }}
                                     accessibilityRole="button"
                                     accessibilityState={{ selected: isActive }}
                                     style={[styles.formChip, isActive && styles.chipActive]}>

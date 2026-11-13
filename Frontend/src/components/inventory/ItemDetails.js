@@ -17,7 +17,9 @@ import {
 // Screen 2: what you see after tapping an item.
 // The minimum only decides when the item counts as "Lav beholdning"; it does not decide how much to buy.
 // Adding to the shopping list starts at 1, and the amount is then adjusted with − / +.
-export default function ItemDetails({ item, shoppingEntry, isAddingToList, onEdit, onReceive, onAddToShoppingList, onChangeShoppingQuantity }) {
+// justCreated: shown right after "Opret vare" — a confirmation line, and only the shopping list button
+// (no Rediger / Modtag vare, since the item was just set up and has nothing in stock yet).
+export default function ItemDetails({ item, shoppingEntry, isAddingToList, justCreated = false, onEdit, onReceive, onAddToShoppingList, onChangeShoppingQuantity }) {
     const expiry = formatExpiry(item);
     const expiryTone = getExpiryTone(item.nextExpiryDate);
     const stockColor = isOutOfStock(item) ? inventoryColors.red : isLowStock(item) ? inventoryColors.amber : inventoryColors.text;
@@ -27,6 +29,13 @@ export default function ItemDetails({ item, shoppingEntry, isAddingToList, onEdi
 
     return (
         <SheetBody>
+            {justCreated && (
+                <View style={styles.createdBanner} accessibilityRole="alert">
+                    <Check size={18} strokeWidth={2.8} color={inventoryColors.primary} />
+                    <Text style={styles.createdBannerText}>Varen er oprettet</Text>
+                </View>
+            )}
+
             <View style={styles.sheetTitleRow}>
                 {imageSource && (
                     <Image source={imageSource} style={styles.sheetImage} contentFit="cover" accessibilityIgnoresInvertColors />
@@ -35,14 +44,16 @@ export default function ItemDetails({ item, shoppingEntry, isAddingToList, onEdi
                     <Text style={styles.sheetTitle} accessibilityRole="header">{item.name}</Text>
                     <Text style={styles.subtitle}>{getCategoryName(item)}</Text>
                 </View>
-                <Pressable
-                    onPress={onEdit}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Rediger ${item.name}`}
-                    style={({ pressed }) => [styles.editPill, pressed && styles.pressed]}>
-                    <Pencil size={16} color={inventoryColors.primary} />
-                    <Text style={styles.editPillText}>Rediger</Text>
-                </Pressable>
+                {!justCreated && (
+                    <Pressable
+                        onPress={onEdit}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Rediger ${item.name}`}
+                        style={({ pressed }) => [styles.editPill, pressed && styles.pressed]}>
+                        <Pencil size={16} color={inventoryColors.primary} />
+                        <Text style={styles.editPillText}>Rediger</Text>
+                    </Pressable>
+                )}
             </View>
 
             <View style={styles.group}>
@@ -72,12 +83,14 @@ export default function ItemDetails({ item, shoppingEntry, isAddingToList, onEdi
             </View>
 
             <View style={styles.buttonStack}>
-                <Pressable
-                    onPress={onReceive}
-                    accessibilityRole="button"
-                    style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
-                    <Text style={styles.primaryButtonText}>Modtag vare</Text>
-                </Pressable>
+                {!justCreated && (
+                    <Pressable
+                        onPress={onReceive}
+                        accessibilityRole="button"
+                        style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
+                        <Text style={styles.primaryButtonText}>Modtag vare</Text>
+                    </Pressable>
+                )}
 
                 {shoppingEntry ? (
                     <View style={styles.shoppingButton}>

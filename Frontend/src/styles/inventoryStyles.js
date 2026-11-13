@@ -21,6 +21,9 @@ export const inventoryColors = {
     amberSoft: '#FEF3E2',
     violet: '#6D28D9',
     violetSoft: '#EFE9FD',
+    // "På lager" card (everything that is in stock)
+    stockBlue: '#1D4ED8',
+    stockBlueSoft: '#E8EEFC',
     blue: colors.alternatives.blue,
 };
 
@@ -265,6 +268,25 @@ const styles = StyleSheet.create({
         backgroundColor: inventoryColors.card,
     },
 
+    // Full-width card at the bottom of the grid ("På lager"): everything on one line
+    summaryCardWide: {
+        width: '100%',
+        minHeight: 64,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+
+    summaryCountWide: {
+        marginTop: 0,
+        fontSize: 26,
+        lineHeight: 30,
+    },
+
+    summaryLabelWide: {
+        flex: 1,
+    },
+
     summaryCardTop: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -429,6 +451,29 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
+    },
+
+    // Overblik row for an item that is on the shopping list: green border, like the Indkøbsliste card
+    overviewRowOnList: {
+        margin: 4,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: inventoryColors.primary,
+        backgroundColor: inventoryColors.primarySoft,
+    },
+
+    onListLine: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 2,
+    },
+
+    onListText: {
+        flexShrink: 1,
+        color: inventoryColors.primary,
+        fontSize: 13,
+        fontWeight: '600',
     },
 
     overviewAmount: {
@@ -622,6 +667,31 @@ const styles = StyleSheet.create({
         backgroundColor: inventoryColors.primary,
     },
 
+    // − amount + on a shopping list line
+    lineStepper: {
+        height: 40,
+        borderRadius: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: inventoryColors.controlSoft,
+    },
+
+    lineStepperButton: {
+        width: 40,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    lineStepperValue: {
+        minWidth: 44,
+        color: inventoryColors.primary,
+        fontSize: 15,
+        fontWeight: '700',
+        fontVariant: ['tabular-nums'],
+        textAlign: 'center',
+    },
+
     removeLineButton: {
         width: 44,
         height: 44,
@@ -780,6 +850,23 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         gap: 12,
         paddingHorizontal: 4,
+    },
+
+    // "Varen er oprettet" at the top of the sheet right after Opret vare
+    createdBanner: {
+        minHeight: 40,
+        paddingHorizontal: 12,
+        borderRadius: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: inventoryColors.primarySoft,
+    },
+
+    createdBannerText: {
+        color: inventoryColors.primary,
+        fontSize: 15,
+        fontWeight: '600',
     },
 
     sheetImage: {

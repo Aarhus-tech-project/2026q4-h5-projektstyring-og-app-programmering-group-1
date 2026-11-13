@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Pressable, ScrollView, Text, View, TouchableOpacity } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import {
     ChevronRight,
@@ -155,6 +155,17 @@ export default function DashboardScreen() {
 
     const addCompany = () => navigation.navigate('CompanySignup');
 
+    // Pull down to refresh: stock numbers per company and the unread count on the bell
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const refresh = async () => {
+        setIsRefreshing(true);
+        try {
+            await Promise.all([loadStats(), loadUnreadCount()]);
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
 
 
     const handleDeleteCompany = async () => {
@@ -221,7 +232,15 @@ export default function DashboardScreen() {
                 <>
                     <ScrollView
                         contentContainerStyle={styles.listContent}
-                        showsVerticalScrollIndicator={false}>
+                        showsVerticalScrollIndicator={false}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={isRefreshing}
+                                onRefresh={refresh}
+                                tintColor={dashboardColors.primary}
+                                colors={[dashboardColors.primary]}
+                            />
+                        }>
 
                         <Pressable
                             style={({ pressed }) => [styles.summaryCard, pressed && styles.pressed]}

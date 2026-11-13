@@ -2,7 +2,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, SectionList, Text, TextInput, View } from 'react-native';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { ChevronLeft, CircleX, Clock, PackageX, Plus, Search, ShoppingCart, TrendingDown } from 'lucide-react-native';
+import { ChevronLeft, CircleX, Clock, Package, PackageX, Plus, Search, ShoppingCart, TrendingDown } from 'lucide-react-native';
 import CategoryManager from '../components/inventory/CategoryManager';
 import InventoryItemRow from '../components/inventory/InventoryItemRow';
 import InventoryOverviewRow from '../components/inventory/InventoryOverviewRow';
@@ -52,15 +52,21 @@ const CARDS = {
     LOW: 'low',
     OUT: 'out',
     EXPIRING: 'expiring',
+    IN_STOCK: 'inStock',
 };
 
-// The Indkøbsliste card opens the shopping list screen; the other cards filter the list under the cards
+// The Indkøbsliste card opens the shopping list screen; the other cards filter the list under the cards.
+// wide: the fifth card fills a whole row at the bottom, so the four above stay a 2 × 2 grid.
 const SUMMARY_CARDS = [
     { key: CARDS.LOW, label: 'Lav beholdning', icon: TrendingDown, color: inventoryColors.amber, softColor: inventoryColors.amberSoft },
     { key: CARDS.SHOPPING, label: 'Indkøbsliste', icon: ShoppingCart, color: inventoryColors.primary, softColor: inventoryColors.primarySoft },
     { key: CARDS.OUT, label: 'Ikke på lager', icon: PackageX, color: inventoryColors.red, softColor: inventoryColors.redSoft },
     { key: CARDS.EXPIRING, label: 'Udløber snart', icon: Clock, color: inventoryColors.violet, softColor: inventoryColors.violetSoft },
+    { key: CARDS.IN_STOCK, label: 'På lager', icon: Package, color: inventoryColors.stockBlue, softColor: inventoryColors.stockBlueSoft, wide: true },
 ];
+
+// "På lager": every item with something in stock (also the ones that are low or expire soon)
+const isInStock = (item) => Number(item.quantity) > 0;
 
 const LOW_STOCK_STATUS = { tone: STATUS_TONES.AMBER, text: 'Lav beholdning' };
 
@@ -191,6 +197,7 @@ export default function InventoryScreen({ navigation, route }) {
         [CARDS.LOW]: items.filter(isLowStock).length,
         [CARDS.OUT]: items.filter(isOutOfStock).length,
         [CARDS.EXPIRING]: items.filter(isExpiringSoon).length,
+        [CARDS.IN_STOCK]: items.filter(isInStock).length,
     }), [items, shoppingItems]);
 
     // Rows shown under the cards for the selected card
@@ -199,6 +206,7 @@ export default function InventoryScreen({ navigation, route }) {
             [CARDS.LOW]: isLowStock,
             [CARDS.OUT]: isOutOfStock,
             [CARDS.EXPIRING]: isExpiringSoon,
+            [CARDS.IN_STOCK]: isInStock,
         }[selectedCard];
 
         return items
@@ -386,8 +394,9 @@ export default function InventoryScreen({ navigation, route }) {
         }
 
         await loadItems({ silent: true });
-        // Showing the new item confirms it was created and lets the user receive goods straight away
-        setSheet(itemId ? { itemId, mode: SHEET_MODES.DETAILS } : null);
+        // Show the new item as confirmation; justCreated hides Rediger / Modtag vare, so only
+        // "Tilføj til indkøbsliste" is offered (the new item has nothing in stock yet)
+        setSheet(itemId ? { itemId, mode: SHEET_MODES.DETAILS, justCreated: true } : null);
     }
 
     const selectedCardConfig = SUMMARY_CARDS.find((card) => card.key === selectedCard);
@@ -513,6 +522,7 @@ export default function InventoryScreen({ navigation, route }) {
                             isSelected={selectedCard === card.key}
                             onPress={card.key === CARDS.SHOPPING ? openShoppingList : () => setSelectedCard(card.key)}
                             opensScreen={card.key === CARDS.SHOPPING}
+                            wide={Boolean(card.wide)}
                         />
                     ))}
                 </View>
@@ -538,6 +548,7 @@ export default function InventoryScreen({ navigation, route }) {
                                 quantity={row.quantity}
                                 minQuantity={row.minQuantity}
                                 unit={row.unit}
+                                shoppingEntry={shoppingByItemId[row.itemId]}
                                 isFirst={index === 0}
                                 onPress={() => setSheet({ itemId: row.itemId, mode: SHEET_MODES.DETAILS })}
                             />
@@ -643,6 +654,7 @@ export default function InventoryScreen({ navigation, route }) {
                         item={sheetItem}
                         shoppingEntry={shoppingByItemId[sheetItem.id]}
                         isAddingToList={isAddingToList}
+                        justCreated={Boolean(sheet.justCreated)}
                         onEdit={() => setSheet({ ...sheet, mode: SHEET_MODES.EDIT })}
                         onReceive={() => openReceive(sheetItem, true)}
                         onAddToShoppingList={addToShoppingList}
