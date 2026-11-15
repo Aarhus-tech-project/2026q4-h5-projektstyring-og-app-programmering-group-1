@@ -2,25 +2,38 @@ import { useCallback, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ActivityIndicator, Alert, FlatList, LayoutAnimation, Pressable, RefreshControl, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Bell, ChevronLeft, Clock, Store, TrendingDown } from 'lucide-react-native';
+import { Bell, ChevronLeft, Clock, PackageX, ShoppingCart, Store, TrendingDown } from 'lucide-react-native';
 import styles, { notificationColors } from '../styles/notificationsStyles';
-import { deleteNotification, getNotifications, markNotificationRead } from '../services/notificationService';
+import { deleteAllNotifications, deleteNotification, getNotifications, markNotificationRead } from '../services/notificationService';
 import { getErrorMessage } from '../../http/http';
 import SwipeToDelete from '../components/SwipeToDelete';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 // Udseende pr. notifikationstype fra backend
 const TYPE_CONFIG = {
     udloeb: {
         title: 'Udløber snart',
         Icon: Clock,
-        color: notificationColors.red,
-        background: notificationColors.redSoft,
+        color: notificationColors.violet,
+        background: notificationColors.violetSoft,
     },
     lav_beholdning: {
         title: 'Lav beholdning',
         Icon: TrendingDown,
-        color: notificationColors.orange,
-        background: notificationColors.orangeSoft,
+        color: notificationColors.amber,
+        background: notificationColors.amberSoft,
+    },
+    udsolgt: {
+        title: 'Ikke på lager',
+        Icon: PackageX,
+        color: notificationColors.red,
+        background: notificationColors.redSoft,
+    },
+    indkoebsliste: {
+        title: 'Indkøbsliste',
+        Icon: ShoppingCart,
+        color: notificationColors.primary,
+        background: notificationColors.primarySoft,
     },
 };
 
@@ -59,6 +72,7 @@ export default function NotificationsScreen({ navigation }) {
     const [error, setError] = useState(null);
     // Lodret scroll låses mens man swiper en notifikation til siden
     const [scrollEnabled, setScrollEnabled] = useState(true);
+    const [isClearConfirmVisible, setIsClearConfirmVisible] = useState(false);
 
     const unreadCount = notifications.filter((n) => !n.read_at).length;
 
@@ -107,9 +121,9 @@ export default function NotificationsScreen({ navigation }) {
     const openNotification = (notification) => {
         markAsRead(notification);
 
-        // Åbn lageret for den virksomhed notifikationen handler om
+        // Åbn indkøbslisten for en indkøbsliste-notifikation, ellers lageret for virksomheden
         if (notification.company_id) {
-            navigation.navigate('Inventory', {
+            navigation.navigate(notification.type === 'indkoebsliste' ? 'ShoppingList' : 'Inventory', {
                 companyId: notification.company_id,
                 companyName: notification.company_name,
             });
@@ -134,6 +148,22 @@ export default function NotificationsScreen({ navigation }) {
                 return next;
             });
             Alert.alert('Kunne ikke slette', getErrorMessage(err, { fallback: 'Notifikationen kunne ikke slettes.' }));
+        }
+    };
+
+    // "Ryd alle": empty the list right away, and put it back if the server fails
+    const clearAll = async () => {
+        setIsClearConfirmVisible(false);
+        const previous = notifications;
+
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setNotifications([]);
+        try {
+            await deleteAllNotifications();
+        } catch (err) {
+            console.error('Error deleting all notifications:', err);
+            setNotifications(previous);
+            Alert.alert('Kunne ikke rydde', getErrorMessage(err, { fallback: 'Notifikationerne kunne ikke slettes.' }));
         }
     };
 
@@ -204,13 +234,25 @@ export default function NotificationsScreen({ navigation }) {
     return (
         <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
             <View style={styles.header}>
-                <Pressable
-                    style={styles.backButton}
-                    onPress={goBack}
-                    accessibilityRole="button"
-                    accessibilityLabel="Tilbage">
-                    <ChevronLeft size={28} color={notificationColors.text} />
-                </Pressable>
+                <View style={styles.headerTopRow}>
+                    <Pressable
+                        style={styles.backButton}
+                        onPress={goBack}
+                        accessibilityRole="button"
+                        accessibilityLabel="Tilbage">
+                        <ChevronLeft size={28} color={notificationColors.text} />
+                    </Pressable>
+                    {!loading && notifications.length > 0 && (
+                        <Pressable
+                            onPress={() => setIsClearConfirmVisible(true)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Ryd alle notifikationer"
+                            hitSlop={8}
+                            style={({ pressed }) => [styles.clearAllButton, pressed && styles.pressed]}>
+                            <Text style={styles.clearAllText}>Ryd alle</Text>
+                        </Pressable>
+                    )}
+                </View>
                 <Text style={styles.title}>Notifikationer</Text>
                 {!loading && notifications.length > 0 && (
                     <Text style={styles.subtitle}>
@@ -220,6 +262,17 @@ export default function NotificationsScreen({ navigation }) {
             </View>
 
             {renderContent()}
+
+            <ConfirmationModal
+                visible={isClearConfirmVisible}
+                variant="danger"
+                title="Ryd alle notifikationer?"
+                message={`Alle ${notifications.length} notifikationer fjernes fra listen. Det kan ikke fortrydes.`}
+                confirmText="Ryd alle"
+                cancelText="Annuller"
+                onConfirm={clearAll}
+                onCancel={() => setIsClearConfirmVisible(false)}
+            />
         </SafeAreaView>
     );
 }
