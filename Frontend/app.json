@@ -23,7 +23,28 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router"
-    ]
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Appen skal bruge adgang til dine billeder, så du kan vælge et profilbillede eller et billede af en vare.",
+          "cameraPermission": "Appen skal bruge adgang til kameraet, så du kan tage et profilbillede eller et billede af en vare.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-image",
+      "@react-native-community/datetimepicker"
+    ],
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "4220cbed-451c-4c84-a09f-57d6f3c17618"
+      }
+    },
+    "owner": "minhlu14206"
   }
 }

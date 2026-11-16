@@ -14,5 +14,24 @@ services:
       timeout: 5s
       retries: 5
 
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: lagerklar-caddy
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    extra_hosts:
+      # Lets the container reach the Go backend running on the host (also on Linux)
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

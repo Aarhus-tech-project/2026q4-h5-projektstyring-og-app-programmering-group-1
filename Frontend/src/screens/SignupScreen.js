@@ -1,8 +1,12 @@
-import { SafeAreaView } from 'react-native-safe-area-context';
+﻿import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAvoidingView, Platform, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useState } from 'react';
-import { MoveLeft } from 'lucide-react-native';
+import { Check, ChevronLeft, Circle } from 'lucide-react-native';
+import colors from '../constants/colors';
 import styles from '../styles/loginStyles';
+import resetStyles, { resetColors } from '../styles/passwordResetStyles';
+import http from '../../http/http';
+import { getPasswordRequirements, validateNewPassword } from '../utils/passwordResetUtils';
 
 
 export default function SignupScreen({ navigation }) {
@@ -11,23 +15,79 @@ export default function SignupScreen({ navigation }) {
     const [confirmEmail, setConfirmEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
+    async function handleSignUp() {
+        const trimmedFirstName = firstName.trim();
+        const trimmedLastName = lastName.trim();
+        const trimmedEmail = email.trim().toLocaleLowerCase();
 
-    function handleSignUp() {
-        if (email !== confirmEmail) {
-            Alert.alert('Email matcher ikke', 'Sørg for at email og bekræft email er ens.');
+        if (!trimmedFirstName || !trimmedLastName) {
+            Alert.alert(
+                'Manglende navn',
+                'Udfyld både fornavn of efternavn.'
+            );
             return;
         }
 
-        if (password !== confirmPassword) {
-            Alert.alert('Password matcher ikke', 'Sørg for at password og bekræft password er ens.');
+        if (trimmedEmail !== confirmEmail.trim().toLocaleLowerCase()) {
+            Alert.alert(
+                'Email matcher ikke',
+                'Sørg for at email og bekræft email matcher.'
+            );
             return;
         }
 
-        Alert.alert('Konto oprettet', 'Din konto er blevet oprettet. Du kan nu logge ind. PLACEHOLDER BACKEND NOT SETUP');
+        if (!password) {
+            Alert.alert('Manglende password', 'Indtast et password.');
+            return;
+        }
 
-        // BACKEND IS NOT ADDED YET, SO THIS IS JUST A PLACEHOLDER FOR NOW
+        // Samme regler som ved nulstilling af password: mindst 8 tegn, et bogstav og et tal.
+        const passwordError = validateNewPassword(password, confirmPassword);
+        if (passwordError) {
+            Alert.alert('Ugyldigt password', passwordError);
+            return;
+        }
+
+        setIsLoading(true);
+
+
+        try {
+            const response = await http.post("/register",{
+                name: `${trimmedFirstName} ${trimmedLastName}`,
+                email: trimmedEmail,
+                password,
+            })
+
+            if (!response.data.success) {
+                Alert.alert(
+                    'Kunne ikke oprette konto',
+                    response.data.message || 'Registreringen kunne ikke gennemføres.'
+                );
+                return;
+            }
+
+            Alert.alert(
+            'Konto oprettet',
+            'Din konto er oprettet. Du kan nu logge ind.',
+            [
+                {
+                    text: 'OK',
+                    onPress: () => navigation.replace('Login'),
+                },
+            ]
+        );
+    } catch (error) {
+        console.error('Registration request failed:', error);
+    } finally {
+        setIsLoading(false);
     }
+}
+
+
 
     return (
         <KeyboardAvoidingView
@@ -43,12 +103,38 @@ export default function SignupScreen({ navigation }) {
                         <Pressable
                         style={styles.backButton}
                         onPress={() => navigation.goBack()}>
-                            <MoveLeft size={30} />
+                            <ChevronLeft size={30} />
                         </Pressable>
                         
                         <Text style={styles.brand}>LAGERKLAR</Text>
 
                         <Text style={styles.welcomeText}>Opret en ny konto</Text>
+
+                        <View style={styles.nameFieldsRow}>
+                            <View style={styles.nameField}>
+                                <Text style={styles.label}>Fornavn</Text>
+                                <TextInput
+                                style={styles.input}
+                                placeholder="Fornavn"
+                                placeholderTextColor="#9CA3AF"
+                                value={firstName}
+                                onChangeText={setFirstName}
+                                autoCapitalize="none"
+                                keyboardType="name-first"/>
+                            </View>
+                        
+                            <View style={styles.nameField}>
+                                <Text style={styles.label}>Efternavn</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Efternavn"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={lastName}
+                                    onChangeText={setLastName}
+                                    autoCapitalize="none"
+                                    keyboardType="name-last"/>
+                            </View>
+                        </View>
 
                         <Text style={styles.label}>Email</Text>
                         <TextInput
@@ -81,6 +167,19 @@ export default function SignupScreen({ navigation }) {
                             secureTextEntry={true}
                             autoCapitalize="none"/>
 
+                        <View style={resetStyles.requirements}>
+                            {getPasswordRequirements(password).map((requirement) => (
+                                <View key={requirement.key} style={resetStyles.requirementRow}>
+                                    {requirement.met
+                                        ? <Check size={14} color={colors.primary} />
+                                        : <Circle size={10} color={resetColors.muted} />}
+                                    <Text style={[resetStyles.requirementText, requirement.met && resetStyles.requirementMet]}>
+                                        {requirement.label}
+                                    </Text>
+                                </View>
+                            ))}
+                        </View>
+
                         <Text style={styles.label}>Bekræft password</Text>
                         <TextInput
                             style={styles.input}
@@ -92,8 +191,14 @@ export default function SignupScreen({ navigation }) {
                             autoCapitalize="none"/>
                             
 
-                        <Pressable style={styles.loginButton} onPress={handleSignUp}>
-                            <Text style={styles.loginButtonText}>Opret konto</Text>
+                        <Pressable
+                        style={styles.loginButton}
+                        onPress={handleSignUp}
+                        disabled={isLoading}>
+                            <Text
+                            style={styles.loginButtonText}>
+                                {isLoading ? 'Opretter konto...' : 'Opret konto'}
+                                </Text>
                         </Pressable>
 
                         

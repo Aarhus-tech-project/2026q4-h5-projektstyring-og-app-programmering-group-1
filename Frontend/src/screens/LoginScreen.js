@@ -1,16 +1,66 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View, Alert } from 'react-native';
 import { useState } from 'react'
-import { MoveLeft } from 'lucide-react-native';
+import { ChevronLeft } from 'lucide-react-native';
+import { useAuth } from '../AuthContext/AuthContext';
+import { getErrorMessage } from '../../http/http';
 import styles from '../styles/loginStyles';
+import resetStyles from '../styles/passwordResetStyles';
 
 
+export default function LoginScreen({ navigation, route }) {
 
-
-export default function LoginScreen({ navigation }) {
-
-    const [email, setEmail] = useState('');
+    const { login, user } = useAuth();
+    const [isLoading, setIsLoading] = useState(false);
+    const [email, setEmail] = useState(route?.params?.email || user?.email || '');
     const [password, setPassword] = useState('');
+
+    // Efter "Glemt password" sendes brugeren tilbage hertil med sin email udfyldt
+    const passwordResetAt = route?.params?.passwordResetAt;
+    const [handledResetAt, setHandledResetAt] = useState(passwordResetAt);
+    if (passwordResetAt && passwordResetAt !== handledResetAt) {
+        setHandledResetAt(passwordResetAt);
+        setEmail(route.params.email || email);
+        setPassword('');
+    }
+
+
+    async function handleLogin() {
+        if (!email.trim() || !password) {
+            Alert.alert(
+                'Manglende oplysinger',
+                'Indast både email og password'
+            );
+            return;
+        }
+
+        setIsLoading(true);
+
+        try {
+            const loginData = await login(email, password);
+
+            console.log('Logged in user: ', loginData.user);
+            console.log('User companies: ', loginData.companies);
+
+            navigation.replace('Dashboard');
+        } catch (error) {
+            // console.log i stedet for console.error, så der ikke vises en rød fejl-overlay i appen
+            console.log('Login failed:', error?.response?.status ?? error?.message);
+
+            // Alert.alert(title, message) — the third argument must be a list of buttons, not text,
+            // otherwise React Native throws "undefined is not a function"
+            Alert.alert(
+                'Kunne ikke logge ind',
+                getErrorMessage(error, {
+                    400: 'Indtast en gyldig email og password.',
+                    401: 'Forkert email eller password.',
+                    fallback: error?.message || 'Der opstod en fejl under login. Prøv igen.',
+                })
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    }
 
     return (
         <KeyboardAvoidingView
@@ -20,7 +70,7 @@ export default function LoginScreen({ navigation }) {
                 <SafeAreaView style={styles.safeArea}>
                     <View style={styles.loginCard}>
                         <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-                            <MoveLeft size={30} />
+                            <ChevronLeft size={30} />
                         </Pressable>
 
                         <Text style={styles.brand}>LAGERKLAR</Text>
@@ -51,10 +101,24 @@ export default function LoginScreen({ navigation }) {
                         />
 
                         <Pressable
-                            style={styles.loginButton}
-                            onPress={() => console.log({ email, password })}>
+                            style={resetStyles.forgotPasswordLink}
+                            accessibilityRole="link"
+                            onPress={() => navigation.navigate('ForgotPassword', { email: email.trim() })}
+                            disabled={isLoading}
+                            hitSlop={8}
+                        >
+                            <Text style={resetStyles.forgotPasswordText}>Glemt password?</Text>
+                        </Pressable>
 
-                            <Text style={styles.loginButtonText}>Log ind</Text>
+                        <Pressable
+                            style={styles.loginButton}
+                            onPress={handleLogin}
+                            disabled={isLoading}
+                            >
+
+                            <Text style={styles.loginButtonText}>
+                                {isLoading ? 'Logger ind...' : 'logind'}
+                                </Text>
                         </Pressable>
 
                         <View Style={styles.signUpRow}>

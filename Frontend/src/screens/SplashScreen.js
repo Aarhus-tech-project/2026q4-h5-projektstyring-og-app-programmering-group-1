@@ -2,14 +2,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Animated, Text, View } from 'react-native';
 import { useEffect, useRef } from 'react';
 import { PackageCheck } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from '../styles/splashStyles';
+import { ONBOARDING_KEY } from './OnboardingScreen';
+const MODE = process.env.EXPO_PUBLIC_MODE || 'development';
 
 const SPLASH_DURATION = 2000;
 
 export default function SplashScreen({ navigation }) {
 
     useEffect(() => {
-        const timer = setTimeout(() => navigation.replace('Home'), SPLASH_DURATION);
+        const timer = setTimeout(async () => {
+            let hasSeenOnboarding = null;
+            try {
+                hasSeenOnboarding = await AsyncStorage.getItem(ONBOARDING_KEY);
+                hasSeenOnboarding = MODE === 'development' ? false : hasSeenOnboarding === 'true';
+            } catch (error) {
+                console.error('Could not load onboarding state;', error);
+            }
+            navigation.replace(hasSeenOnboarding ? 'Home' : 'Onboarding');
+        }, SPLASH_DURATION);
         return () => clearTimeout(timer);
     }, [navigation]);
 
@@ -20,12 +32,7 @@ export default function SplashScreen({ navigation }) {
                     <PackageCheck size={56} color="#FFFFFF" strokeWidth={2.2} />
                 </View>
                 <Text style={styles.title}>Lagerstyr</Text>
-                <Text style={styles.subtitle}>Styr på lager og udløbsdatoer</Text>
-            </View>
-
-            <View style={styles.bottom}>
-                <LoadingDots />
-                <Text style={styles.tagline}>TIL SMÅ RESTAURANTER</Text>
+                <Text style={styles.subtitle}>Styr på lager</Text>
             </View>
         </SafeAreaView>
     );

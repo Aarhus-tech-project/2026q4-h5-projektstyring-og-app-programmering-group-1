@@ -1,7 +1,12 @@
 import { NavigationContainer } from '@react-navigation/native';
+import { navigationRef } from './src/navigation/navigationRef';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar } from 'react-native';
+import { AuthProvider } from './src/AuthContext/AuthContext';
 
+import SplashScreen from './src/screens/SplashScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';

@@ -116,6 +116,17 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingVertical: 24,
     },
+
+
+    nameFieldsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    gap: 12,
+    },
+
+    nameField: {
+        flex: 1,
+    },
 });
 
 export default styles;

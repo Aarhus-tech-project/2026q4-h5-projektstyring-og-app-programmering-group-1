@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="da" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>Velkommen til Lagerklar</title>
+  <style>
+    @media only screen and (max-width: 620px) {
+      .container { width: 100% !important; }
+      .px { padding-left: 20px !important; padding-right: 20px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background-color:#F3F4F6; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%;">
+  <!-- Preview text shown in the inbox. -->
+  <div style="display:none; max-height:0; max-width:0; overflow:hidden; opacity:0; mso-hide:all; font-size:1px; line-height:1px; color:#F3F4F6;">Din Lagerklar-konto er oprettet. Log ind i appen og kom i gang med at holde styr på dit lager.</div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F3F4F6;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; background-color:#FFFFFF; border:1px solid #E5E7EB; border-radius:12px; border-collapse:separate; overflow:hidden;">
+
+          <tr>
+            <td class="px" style="background-color:#1E8A5A; padding:20px 32px; font-family:Arial, Helvetica, sans-serif; font-size:18px; line-height:24px; font-weight:bold; letter-spacing:1px; color:#FFFFFF;">
+              LAGERKLAR
+            </td>
+          </tr>
+
+          <tr>
+            <td class="px" style="padding:32px 32px 8px 32px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
+              <h1 style="margin:0 0 16px 0; font-size:22px; line-height:28px; font-weight:bold; color:#111111;">Velkommen til Lagerklar!</h1>
+              <p style="margin:0 0 12px 0; font-size:16px; line-height:24px; color:#374151;">{{if .RecipientName}}Hej {{.RecipientName}},{{else}}Hej,{{end}}</p>
+              <p style="margin:0 0 24px 0; font-size:16px; line-height:24px; color:#374151;">Tak fordi du har oprettet en konto. Din konto er klar, og du kan nu logge ind i appen med din e-mail <strong>{{.RecipientEmail}}</strong>.</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="px" style="padding:0 32px 8px 32px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ECFDF5; border:1px solid #A7F3D0; border-radius:8px; border-collapse:separate;">
+                <tr>
+                  <td style="padding:20px 20px 8px 20px; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:22px; font-weight:bold; color:#111111;">Kom godt i gang</td>
+                </tr>
+                <tr>
+                  <td style="padding:0 20px 20px 20px; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:24px; color:#374151;">
+                    1. Opret eller tilslut dig en virksomhed<br>
+                    2. Tilføj kategorier og varer til dit lager<br>
+                    3. Få besked, når varer er ved at udløbe eller løbe tør
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="px" style="padding:20px 32px 8px 32px; font-family:Arial, Helvetica, sans-serif;">
+              <p style="margin:0 0 24px 0; font-size:15px; line-height:22px; color:#374151;">Har du ikke selv oprettet denne konto, kan du nulstille passwordet via &quot;Glemt password&quot; i appen.</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="px" style="padding:24px 32px 28px 32px; font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:18px; color:#6B7280; border-top:1px solid #E5E7EB;">
+              Denne e-mail er sendt automatisk af Lagerklar. Du kan ikke svare på den.<br>
+              &copy; {{.Year}} Lagerklar
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
