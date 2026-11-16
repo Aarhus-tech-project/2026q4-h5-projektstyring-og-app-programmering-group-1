@@ -2,13 +2,19 @@ import { useCallback, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Building2, CalendarDays, ChevronLeft, Lock, MapPin, SearchX, Users } from 'lucide-react-native';
+import { Building2, CalendarDays, ChevronLeft, ChevronRight, Lock, MapPin, SearchX, Users, Mail, UserPlus } from 'lucide-react-native';
 import styles, { companiesColors, roleColors } from '../styles/companiesStyles';
-import { getCompanyDetails } from '../services/companyService';
+import { getCompanyDetails, getCompanyInvitations, cancelInvitation, createInvitation, promoteMember, removeMember } from '../services/companyService';
 import { getErrorMessage } from '../../http/http';
-import { formatDate, getInitials } from '../utils/companyRoles';
+import { canPromote, canRemove, formatDate, getInitials, getRoleLabel } from '../utils/companyRoles';
 import { useAuth } from '../AuthContext/AuthContext';
 import RoleBadge from '../components/RoleBadge';
+import InvitationModal from '../components/InvitationModal';
+import MemberActionsModal from '../components/MemberActionsModal';
+import InviteMemberModal from '../components/InviteMemberModal';
+
+
+
 
 // Adgangsfejl får deres egen skærm, så brugeren ikke bare ser "prøv igen"
 const ACCESS_ERRORS = {
@@ -34,28 +40,52 @@ export default function CompanyDetailScreen({ navigation, route }) {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
 
+    const [invitations, setInvitations] = useState([]);
+    const [invitationsError, setInvitationsError] = useState(null);
+    const [selectedMember, setSelectedMember] = useState(null);
+    const [isInvitationsVisible, setIsInvitationsVisible] = useState(false);
+    const [isInviteVisible, setIsInviteVisible] = useState(false);
+
+
+
     const loadDetails = useCallback(async ({ isRefresh = false } = {}) => {
         if (!companyId) {
-            setError({ status: 404 });
+            setError({ status: 404});
             setLoading(false);
             return;
         }
 
         if (isRefresh) setRefreshing(true);
         setError(null);
-        try {
-            const data = await getCompanyDetails(companyId);
-            setCompany(data.company);
-            setMembers(data.members);
-        } catch (err) {
+
+        const [detailsResult, invitationsResult] = await Promise.allSettled([
+            getCompanyDetails(companyId),
+            getCompanyInvitations(companyId)
+        ]);
+
+
+        if (detailsResult.status === 'fulfilled') {
+            setCompany(detailsResult.value.company);
+            setMembers(detailsResult.value.members);
+        } else {
+            const err = detailsResult.reason;
             setError({
                 status: err?.response?.status,
-                message: getErrorMessage(err, { fallback: 'Kunne ikke hente virksomheden.' }),
+                message: getErrorMessage(err, { fallback: 'Kunne ikke hente virksomheden.'}),
             });
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
         }
+
+        if (invitationsResult.status === 'fulfilled') {
+            setInvitations(invitationsResult.value);
+            setInvitationsError(null);
+        } else {
+            setInvitationsError(
+                getErrorMessage(invitationsResult.reason, { fallback: 'Kunne ikke hente invitationer.' })
+            );
+        }
+
+        setLoading(false);
+        setRefreshing(false);
     }, [companyId]);
 
     useFocusEffect(
@@ -76,6 +106,36 @@ export default function CompanyDetailScreen({ navigation, route }) {
         setLoading(true);
         loadDetails();
     };
+
+    const handleCancelInvitation = async (invitation) => {
+        try {
+            await cancelInvitation(companyId, invitation.id);
+        } finally {
+            await loadDetails();
+        }
+    };
+
+    const handlePromoteMember = async (member) => {
+        try {
+            await promoteMember(companyId, member.user_id);
+        } finally {
+            await loadDetails();
+        }
+    };
+
+    const handleRemoveMember = async (member) => {
+        try {
+            await removeMember(companyId, member.user_id);
+        } finally {
+            await loadDetails();
+        }
+    };
+
+    const handleInvite = async ({ email, role }) => {
+        await createInvitation(companyId, { email, role });
+        await loadDetails();
+    };
+
 
     const renderContent = () => {
         if (loading) {
@@ -138,6 +198,29 @@ export default function CompanyDetailScreen({ navigation, route }) {
                 }>
                 <CompanyInfoCard company={company} />
 
+                <View style={styles.actionRow}>
+                    <Pressable
+                        style={({ pressed }) => [styles.actionButton, styles.actionButtonPrimary, pressed && styles.pressed]}
+                        onPress={() => setIsInviteVisible(true)}
+                        accessibilityRole="button">
+                            <UserPlus size={18} color="#FFFFFF" />
+                            <Text style={styles.actionButtonTextPrimary}>Inviter</Text>
+                    </Pressable>
+
+                    <Pressable
+                        style={({ pressed }) => [styles.actionButton, styles.actionButtonSecondary, pressed && styles.pressed]}
+                        onPress={() => setIsInvitationsVisible(true)}
+                        accessibilityRole="button"
+                        accessibilityLabel={
+                            invitationsError ? 'Vis invitationer' : `Vis invitationer, ${invitations.length} afventende`
+                        }>
+                        <Mail size={18} color={companiesColors.text} />
+                        <Text style={styles.actionButtonTextSecondary}>
+                            {invitationsError ? 'Vis invitationer' : `Invitationer (${invitations.length})`}
+                        </Text>
+                    </Pressable>
+                </View>
+
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle} accessibilityRole="header">Medarbejdere</Text>
                     <Text style={styles.sectionCount}>{members.length}</Text>
@@ -153,14 +236,20 @@ export default function CompanyDetailScreen({ navigation, route }) {
                             </Text>
                         </View>
                     ) : (
-                        members.map((member, index) => (
-                            <MemberRow
-                                key={member.user_id}
-                                member={member}
-                                isCurrentUser={member.user_id === user?.id}
-                                isLast={index === members.length - 1}
-                            />
-                        ))
+                        members.map((member, index) => {
+                            const hasActions =
+                                canPromote(company.role, member.role) || canRemove(company.role, member.role);
+
+                            return (
+                                <MemberRow
+                                    key={member.user_id}
+                                    member={member}
+                                    isCurrentUser={member.user_id === user?.id}
+                                    isLast={index === members.length - 1}
+                                    onPress={hasActions ? () => setSelectedMember(member) : undefined}
+                                />
+                            );
+                        })
                     )}
                 </View>
             </ScrollView>
@@ -182,6 +271,31 @@ export default function CompanyDetailScreen({ navigation, route }) {
             </View>
 
             {renderContent()}
+
+            <InvitationModal
+                visible={isInvitationsVisible}
+                invitations={invitations}
+                error={invitationsError}
+                onClose={() => setIsInvitationsVisible(false)}
+                onCancelInvitation={handleCancelInvitation}
+            />
+
+            <MemberActionsModal
+                visible={!!selectedMember}
+                member={selectedMember}
+                myRole={company?.role}
+                onClose={() => setSelectedMember(null)}
+                onPromote={handlePromoteMember}
+                onRemove={handleRemoveMember}
+            />
+
+            <InviteMemberModal
+                visible={isInviteVisible}
+                myRole={company?.role}
+                onClose={() => setIsInviteVisible(false)}
+
+                onInvite={handleInvite}
+            />
         </SafeAreaView>
     );
 }
@@ -225,14 +339,22 @@ function InfoRow({ Icon, label, value }) {
     );
 }
 
-function MemberRow({ member, isCurrentUser, isLast }) {
+function MemberRow({ member, isCurrentUser, isLast, onPress }) {
     const colors = roleColors[member.role] ?? roleColors.medarbejder;
+    const label = `${member.name}${isCurrentUser ? ' (dig)' : ''}, ${member.email}, ${getRoleLabel(member.role)}`;
 
     return (
-        <View
-            style={[styles.memberRow, !isLast && styles.memberDivider]}
-            accessible
-            accessibilityLabel={`${member.name}${isCurrentUser ? ' (dig)' : ''}, ${member.email}, ${member.role}`}>
+        <Pressable
+            style={({ pressed }) => [
+                styles.memberRow,
+                !isLast && styles.memberDivider,
+                pressed && onPress && { backgroundColor: companiesColors.graySoft },
+            ]}
+            onPress={onPress}
+            disabled={!onPress}
+            accessibilityRole={onPress ? 'button' : undefined}
+            accessibilityLabel={label}
+            accessibilityHint={onPress ? 'Åbner handlinger for medarbejderen' : undefined}>
             <View style={[styles.memberAvatar, { backgroundColor: colors.background }]}>
                 <Text style={[styles.memberAvatarText, { color: colors.color }]}>{getInitials(member.name)}</Text>
             </View>
@@ -242,11 +364,12 @@ function MemberRow({ member, isCurrentUser, isLast }) {
                     <Text style={styles.memberName} numberOfLines={1}>{member.name}</Text>
                     {isCurrentUser && <Text style={styles.memberYou}>(dig)</Text>}
                 </View>
-                <Text style={styles.memberEmail} numberOfLines={1} selectable>{member.email}</Text>
+                <Text style={styles.memberEmail} numberOfLines={1}>{member.email}</Text>
                 {!member.is_active && <Text style={styles.memberInactive}>Deaktiveret konto</Text>}
             </View>
 
             <RoleBadge role={member.role} />
-        </View>
+            {onPress && <ChevronRight size={18} color={companiesColors.chevron} />}
+        </Pressable>
     );
 }

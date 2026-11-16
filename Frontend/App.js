@@ -10,63 +10,134 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
-import SplashScreen from './src/screens/SplashScreen';
-import SettingsScreen from './src/screens/SettingsScreen';
 import CompanySetupScreen from './src/screens/CompanySetupScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import InventoryScreen from './src/screens/InventoryScreen';
+import ShoppingListScreen from './src/screens/ShoppingListScreen';
+import NotificationsScreen from './src/screens/NotificationsScreen';
+import CompaniesScreen from './src/screens/CompaniesScreen';
+import CompanyDetailScreen from './src/screens/CompanyDetailScreen';
+import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
+import VerifyResetCodeScreen from './src/screens/VerifyResetCodeScreen';
+import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName="Splash"
-        >
-          <Stack.Screen
-            name="Splash"
-            component={SplashScreen}
-            options={{ headerShown: false }}
-          />
-
-          <Stack.Screen
-            name="Home"
-            component={HomeScreen}
-            options={{ headerShown: false }}
-          />
-
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
-
-          <Stack.Screen
-            name="SignUp"
-            component={SignupScreen}
-            options={{ headerShown: false }}
+    <AuthProvider>
+      <StatusBar barStyle="dark-content" />
+      <SafeAreaProvider>
+        <NavigationContainer ref={navigationRef}>
+          <Stack.Navigator
+            initialRouteName="Splash"
+          >
+            <Stack.Screen
+              name="Splash"
+              component={SplashScreen}
+              options={{ headerShown: false }}
             />
 
-          <Stack.Screen
-            name="Dashboard"
-            component={DashboardScreen}
-            options={{ headerShown: false }}
-          />
+            <Stack.Screen
+              name="Onboarding"
+              component={OnboardingScreen}
+              options={{ headerShown: false }}
+            />
 
-          <Stack.Screen
-            name="CompanySetup"
-            component={CompanySetupScreen}
-            options={{ headerShown: false }}
-          />
+            <Stack.Screen
+              name="Home"
+              component={HomeScreen}
+              options={{ headerShown: false }}
+            />
 
-          <Stack.Screen
-            name="Settings"
-            component={SettingsScreen}
-            options={{ headerShown: false }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+            <Stack.Screen
+              name="Dashboard"
+              component={DashboardScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="Settings"
+              component={SettingsScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="Login"
+              component={LoginScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="ForgotPassword"
+              component={ForgotPasswordScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="VerifyResetCode"
+              component={VerifyResetCodeScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="ResetPassword"
+              component={ResetPasswordScreen}
+              options={{ headerShown: false, gestureEnabled: false }}
+            />
+
+            <Stack.Screen
+              name="SignUp"
+              component={SignupScreen}
+              options={{ headerShown: false }}
+              />
+
+              <Stack.Screen
+              name="CompanySignup"
+              component={CompanySetupScreen}
+              options={{ headerShown: false }}
+              />
+
+              <Stack.Screen
+              name="ProfileScreen"
+              component={ProfileScreen}
+              options={{ headerShown: false }}
+              />
+
+              <Stack.Screen
+              name="Inventory"
+              component={InventoryScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="ShoppingList"
+              component={ShoppingListScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="Notifications"
+              component={NotificationsScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="Companies"
+              component={CompaniesScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="CompanyDetail"
+              component={CompanyDetailScreen}
+              options={{ headerShown: false }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </AuthProvider>
   );
 }

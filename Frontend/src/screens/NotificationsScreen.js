@@ -8,6 +8,12 @@ import { deleteAllNotifications, deleteNotification, getNotifications, markNotif
 import { getErrorMessage } from '../../http/http';
 import SwipeToDelete from '../components/SwipeToDelete';
 import ConfirmationModal from '../components/ConfirmationModal';
+import LoadingModal from '../components/LoadingModal';
+import ReceivedInvitations from '../components/ReceivedInvitations';
+import { acceptInvitation, getMyInvitations } from '../services/companyService';
+import { getRoleLabel } from '../utils/companyRoles';
+import { useAuth } from '../AuthContext/AuthContext';
+
 
 // Udseende pr. notifikationstype fra backend
 const TYPE_CONFIG = {
@@ -73,22 +79,47 @@ export default function NotificationsScreen({ navigation }) {
     // Lodret scroll låses mens man swiper en notifikation til siden
     const [scrollEnabled, setScrollEnabled] = useState(true);
     const [isClearConfirmVisible, setIsClearConfirmVisible] = useState(false);
+    
+    const { setCompanies } = useAuth();
+    const [invitations, setInvitations] = useState([]);
+    const [invitationsError, setInvitationsError] = useState(null);
+    const [invitationToAccept, setInvitationToAccept] = useState(null);
+    const [isAcceptConfirmVisible, setIsAcceptConfirmVisible] = useState(false);
+    const [isAccepting, setIsAccepting] = useState(false);
+    const [acceptError, setAcceptError] = useState('');
+
 
     const unreadCount = notifications.filter((n) => !n.read_at).length;
 
     const loadNotifications = useCallback(async ({ isRefresh = false } = {}) => {
         if (isRefresh) setRefreshing(true);
         setError(null);
-        try {
-            const data = await getNotifications();
+
+        const [notificationsResult, invitationsResult] = await Promise.allSettled([
+            getNotifications(),
+            getMyInvitations(),
+        ]);
+
+        if (notificationsResult.status === 'fulfilled') {
+            const data = notificationsResult.value;
             setNotifications(Array.isArray(data) ? data : []);
-        } catch (err) {
-            setError(getErrorMessage(err, { fallback: 'Kunne ikke hente notifikationer.' }));
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
+        } else {
+            setError(getErrorMessage(notificationsResult.reason, { fallback: 'Kunne ikke hente notifikationer.' }));
         }
+
+        if (invitationsResult.status === 'fulfilled') {
+            setInvitations(invitationsResult.value);
+            setInvitationsError(null);
+        } else {
+            setInvitationsError(
+                getErrorMessage(invitationsResult.reason, { fallback: 'Kunne ikke hente invitationer.' })
+            );
+        }
+
+        setLoading(false);
+        setRefreshing(false);
     }, []);
+
 
     // Hent igen hver gang skærmen kommer i fokus
     useFocusEffect(
@@ -172,6 +203,35 @@ export default function NotificationsScreen({ navigation }) {
         loadNotifications();
     };
 
+    
+    const askAccept = (invitation) => {
+        setInvitationToAccept(invitation);
+        setIsAcceptConfirmVisible(true);
+    };
+
+    const confirmAccept = async () => {
+        setIsAcceptConfirmVisible(false);
+        setIsAccepting(true);
+
+        try {
+            const updatedCompanies = await acceptInvitation(invitationToAccept.id);
+            setCompanies(updatedCompanies);
+            setIsAccepting(false);
+            navigation.navigate('Dashboard');
+        } catch (err) {
+            setIsAccepting(false);
+            setAcceptError(
+                getErrorMessage(err, {
+                    404: 'Invitationen er ikke længere gyldig. Den er måske udløbet eller blevet annulleret.',
+                    409: 'Du er allerede medlem af virksomheden.',
+                    fallback: 'Invitationen kunne ikke accepteres. Prøv igen.',
+                })
+            );
+            loadNotifications();
+        }
+    };
+
+
     const renderContent = () => {
         if (loading) {
             return (
@@ -210,6 +270,15 @@ export default function NotificationsScreen({ navigation }) {
                         colors={[notificationColors.primary]}
                     />
                 }
+                ListHeaderComponent={
+                    <ReceivedInvitations
+                        invitations={invitations}
+                        error={invitationsError}
+                        onAccept={askAccept}
+                        hasNotificationsBelow={notifications.length > 0}
+                    />
+                }
+
                 renderItem={({ item }) => (
                     <SwipeToDelete
                         onDelete={() => removeNotification(item)}
@@ -273,6 +342,32 @@ export default function NotificationsScreen({ navigation }) {
                 onConfirm={clearAll}
                 onCancel={() => setIsClearConfirmVisible(false)}
             />
+
+            
+            <ConfirmationModal
+                visible={isAcceptConfirmVisible}
+                variant="status"
+                title={`Bliv medlem af ${invitationToAccept?.company_name ?? ''}?`}
+                message={`Du bliver tilknyttet som ${getRoleLabel(invitationToAccept?.role).toLowerCase()}. Du kan ikke selv forlade virksomheden igen.`}
+                confirmText="Accepter"
+                cancelText="Ikke nu"
+                onConfirm={confirmAccept}
+                onCancel={() => setIsAcceptConfirmVisible(false)}
+            />
+
+            <LoadingModal visible={isAccepting} message="Accepterer invitation..." />
+
+            <ConfirmationModal
+                visible={!!acceptError}
+                variant="alert"
+                title="Noget gik galt"
+                message={acceptError}
+                confirmText="OK"
+                hideCancel
+                onConfirm={() => setAcceptError('')}
+                onCancel={() => setAcceptError('')}
+            />
+
         </SafeAreaView>
     );
 }

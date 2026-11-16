@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+*.exe
+*.test
+*.out
+bin/
+vendor/
+caddy/
+database/init/
+database/migrations/
+README.md
+docker-compose.yml
+Dockerfile
+.dockerignore

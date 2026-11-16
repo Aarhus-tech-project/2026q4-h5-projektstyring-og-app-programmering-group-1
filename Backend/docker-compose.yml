@@ -4,8 +4,10 @@ services:
     container_name: lagerklar-db
     restart: unless-stopped
     env_file: .env
+    # Bound to 127.0.0.1 only: reachable from the server itself (e.g. `go run .`,
+    # psql) but not from the internet. Containers use db:5432 internally.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -14,18 +16,42 @@ services:
       timeout: 5s
       retries: 5
 
+  backend:
+    build: .
+    container_name: lagerklar-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Inside Docker the database is reached via the service name "db", not localhost
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+      PORT: "8080"
+    # Not published on the host: Caddy reaches it as backend:8080 on the
+    # internal Docker network.
+    expose:
+      - "8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
   caddy:
     image: caddy:2.8-alpine
     container_name: lagerklar-caddy
     restart: unless-stopped
-    env_file: .env
+    # Only the values the Caddyfile needs (read from .env by Compose), so the
+    # database password, JWT secret etc. are not passed into this container.
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-https://localhost}
+      TLS_DEFAULT_SNI: ${TLS_DEFAULT_SNI:-localhost}
+      BACKEND_UPSTREAM: backend:8080
+    depends_on:
+      - backend
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    extra_hosts:
-      # Lets the container reach the Go backend running on the host (also on Linux)
-      - "host.docker.internal:host-gateway"
+      # 80 redirects HTTP to HTTPS, 443 serves HTTPS (tcp + udp for HTTP/3).
+      # If something else on the host already uses port 80, set
+      # CADDY_HTTP_PORT in .env (e.g. 8080) instead of stopping it.
+      - "${CADDY_HTTP_PORT:-80}:80"
+      - "${CADDY_HTTPS_PORT:-443}:443"
+      - "${CADDY_HTTPS_PORT:-443}:443/udp"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

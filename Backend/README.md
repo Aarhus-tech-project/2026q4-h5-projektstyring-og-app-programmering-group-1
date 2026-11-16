@@ -33,6 +33,37 @@ The database for LagerKlar runs as a PostgreSQL 16 container. The schema in `dat
 
    The `db` service should show `healthy`.
 |
+## Running the backend in Docker
+
+`docker compose up -d --build` starts three containers: `db` (PostgreSQL), `backend` (the Go API, built from `Dockerfile`) and `caddy` (HTTPS reverse proxy on port 80/443 to the backend).
+
+- Only Caddy is public. The backend (`backend:8080`) is reachable only on the internal Docker network; PostgreSQL is bound to `127.0.0.1:5432` on the host.
+- API through Caddy: `https://localhost` locally, `https://<server IP>` on the server
+- After changing Go code, rebuild just the backend: `docker compose up -d --build backend`
+- Logs: `docker compose logs -f backend` / `docker compose logs -f caddy`
+- Inside Docker, `DATABASE_URL` is set automatically to use the `db` host, so the `localhost` URL in `.env` still works for `go run .`
+
+### HTTPS with an IP address (no domain)
+
+In `.env` set `SITE_ADDRESS=https://<server IP>` and `TLS_DEFAULT_SNI=<server IP>`. The Caddyfile uses `tls internal`, so Caddy signs the certificate with its own local CA (Let's Encrypt does not issue certificates for IP addresses). Clients show a certificate warning unless they trust Caddy's root CA, which you can copy out with:
+
+```bash
+docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt
+```
+
+The server/provider firewall must allow inbound TCP 80 and 443 (and UDP 443 for HTTP/3). If port 80 is used by another program (e.g. nginx), stop it or set `CADDY_HTTP_PORT` in `.env`.
+
+### Switching to a domain later
+
+1. Point the domain's DNS A record to the server IP.
+2. In `.env` set `SITE_ADDRESS=api.example.com` and `TLS_DEFAULT_SNI=api.example.com`.
+3. Remove the `tls internal` line from `caddy/Caddyfile`.
+4. `docker compose up -d --force-recreate caddy`
+
+Caddy then obtains and renews a trusted Let's Encrypt certificate automatically (ports 80 and 443 must be reachable from the internet).
+
+To run the backend on your machine with `go run .` instead, start only the database: `docker compose up -d db`.
+
 ## Connecting from the Go backend
 
 Use the connection string from `.env`:
