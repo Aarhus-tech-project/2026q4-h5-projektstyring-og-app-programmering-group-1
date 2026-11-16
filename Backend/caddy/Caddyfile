@@ -1,14 +1,36 @@
 # Caddy reverse proxy for the LagerKlar Go/Gin backend.
 #
-# SITE_ADDRESS defaults to ":80" (plain HTTP on port 80).
-# Set SITE_ADDRESS in .env to a real domain (e.g. api.example.com) and Caddy
-# will automatically obtain and renew a Let's Encrypt HTTPS certificate.
-{$SITE_ADDRESS::80} {
+# Values come from .env (docker-compose.yml passes them into this container):
+#   SITE_ADDRESS     https://<public server IP>   e.g. https://203.0.113.10
+#   TLS_DEFAULT_SNI  <public server IP>           e.g. 203.0.113.10
+#
+# --- IP address, no domain (current setup) ---
+# `tls internal` makes Caddy issue the certificate from its own local CA, because
+# Let's Encrypt does not issue certificates for bare IP addresses. Browsers/phones
+# show a certificate warning unless they trust Caddy's root CA
+# (stored in the caddy_data volume at /data/caddy/pki/authorities/local/root.crt).
+#
+# --- Switching to a domain later ---
+# 1. Point the domain's DNS A record to the server IP.
+# 2. In .env set SITE_ADDRESS=api.example.com and TLS_DEFAULT_SNI=api.example.com
+# 3. Delete the `tls internal` line below.
+# 4. docker compose up -d --force-recreate caddy
+# Caddy then gets a trusted Let's Encrypt certificate automatically
+# (needs ports 80 and 443 reachable from the internet).
+{
+	# Clients connecting by IP send no SNI. Without this, Caddy in Docker looks
+	# for a certificate matching the container's internal IP and the TLS
+	# handshake fails.
+	default_sni {$TLS_DEFAULT_SNI:localhost}
+}
+
+{$SITE_ADDRESS:https://localhost} {
+
 	encode gzip zstd
 
-	# The Go backend runs on the host machine (go run .), so we reach it
-	# through host.docker.internal. Set BACKEND_UPSTREAM=backend:8080 if the
-	# backend is later added as a service in docker-compose.yml.
+	# docker-compose.yml sets BACKEND_UPSTREAM=backend:8080 (the backend
+	# container on the internal Docker network). The fallback
+	# host.docker.internal:8080 is for running the backend with `go run .`.
 	reverse_proxy {$BACKEND_UPSTREAM:host.docker.internal:8080}
 
 	log {
