@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Easing, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mail, X } from 'lucide-react-native';
 import styles from '../styles/invitationsModalStyles';
@@ -9,34 +9,13 @@ import RoleBadge from './RoleBadge';
 import LoadingModal from './LoadingModal';
 import ConfirmationModal from './ConfirmationModal';
 import { getErrorMessage } from '../../http/http';
+import useSlideUpSheet from '../hooks/useSlideUpSheet';
 
-const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 
 export default function InvitationModal({ visible, invitations, error, onClose, onCancelInvitation }) {
     const insets = useSafeAreaInsets();
-    const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-
-    useEffect(() => {
-        if (visible) {
-            translateY.setValue(SCREEN_HEIGHT);
-            Animated.timing(translateY, {
-                toValue: 0,
-                duration: 280,
-                easing: Easing.out(Easing.cubic),
-                useNativeDriver: true,
-            }).start();
-        }
-    }, [visible, translateY]);
-
-    const handleClose = () => {
-        Animated.timing(translateY, {
-            toValue: SCREEN_HEIGHT,
-            duration: 220,
-            easing: Easing.in(Easing.cubic),
-            useNativeDriver: true,
-        }).start(() => onClose());
-    };
+    const { translateY, close: handleClose } = useSlideUpSheet(visible, onClose);
 
     const [invitationToCancel, setInvitationToCancel] = useState(null);
     const [isCancelling, setIsCancelling] = useState(false);

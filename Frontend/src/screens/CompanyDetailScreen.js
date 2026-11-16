@@ -2,14 +2,15 @@ import { useCallback, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Building2, CalendarDays, ChevronLeft, Lock, MapPin, SearchX, Users, Mail, UserPlus } from 'lucide-react-native';
+import { Building2, CalendarDays, ChevronLeft, ChevronRight, Lock, MapPin, SearchX, Users, Mail, UserPlus } from 'lucide-react-native';
 import styles, { companiesColors, roleColors } from '../styles/companiesStyles';
-import { getCompanyDetails, getCompanyInvitations, cancelInvitation } from '../services/companyService';
+import { getCompanyDetails, getCompanyInvitations, cancelInvitation, promoteMember, removeMember } from '../services/companyService';
 import { getErrorMessage } from '../../http/http';
-import { formatDate, getInitials } from '../utils/companyRoles';
+import { canPromote, canRemove, formatDate, getInitials, getRoleLabel } from '../utils/companyRoles';
 import { useAuth } from '../AuthContext/AuthContext';
 import RoleBadge from '../components/RoleBadge';
 import InvitationModal from '../components/InvitationModal';
+import MemberActionsModal from '../components/MemberActionsModal';
 
 
 // Adgangsfejl får deres egen skærm, så brugeren ikke bare ser "prøv igen"
@@ -38,6 +39,7 @@ export default function CompanyDetailScreen({ navigation, route }) {
 
     const [invitations, setInvitations] = useState([]);
     const [invitationsError, setInvitationsError] = useState(null);
+    const [selectedMember, setSelectedMember] = useState(null);
     const [isInvitationsVisible, setIsInvitationsVisible] = useState(false);
 
 
@@ -106,7 +108,24 @@ export default function CompanyDetailScreen({ navigation, route }) {
         } finally {
             await loadDetails();
         }
-    }
+    };
+
+    const handlePromoteMember = async (member) => {
+        try {
+            await promoteMember(companyId, member.user_id);
+        } finally {
+            await loadDetails();
+        }
+    };
+
+    const handleRemoveMember = async (member) => {
+        try {
+            await removeMember(companyId, member.user_id);
+        } finally {
+            await loadDetails();
+        }
+    };
+
 
     const renderContent = () => {
         if (loading) {
@@ -207,14 +226,20 @@ export default function CompanyDetailScreen({ navigation, route }) {
                             </Text>
                         </View>
                     ) : (
-                        members.map((member, index) => (
-                            <MemberRow
-                                key={member.user_id}
-                                member={member}
-                                isCurrentUser={member.user_id === user?.id}
-                                isLast={index === members.length - 1}
-                            />
-                        ))
+                        members.map((member, index) => {
+                            const hasActions =
+                                canPromote(company.role, member.role) || canRemove(company.role, member.role);
+
+                            return (
+                                <MemberRow
+                                    key={member.user_id}
+                                    member={member}
+                                    isCurrentUser={member.user_id === user?.id}
+                                    isLast={index === members.length - 1}
+                                    onPress={hasActions ? () => setSelectedMember(member) : undefined}
+                                />
+                            );
+                        })
                     )}
                 </View>
             </ScrollView>
@@ -243,6 +268,15 @@ export default function CompanyDetailScreen({ navigation, route }) {
                 error={invitationsError}
                 onClose={() => setIsInvitationsVisible(false)}
                 onCancelInvitation={handleCancelInvitation}
+            />
+
+            <MemberActionsModal
+                visible={!!selectedMember}
+                member={selectedMember}
+                myRole={company?.role}
+                onClose={() => setSelectedMember(null)}
+                onPromote={handlePromoteMember}
+                onRemove={handleRemoveMember}
             />
         </SafeAreaView>
     );
@@ -287,14 +321,22 @@ function InfoRow({ Icon, label, value }) {
     );
 }
 
-function MemberRow({ member, isCurrentUser, isLast }) {
+function MemberRow({ member, isCurrentUser, isLast, onPress }) {
     const colors = roleColors[member.role] ?? roleColors.medarbejder;
+    const label = `${member.name}${isCurrentUser ? ' (dig)' : ''}, ${member.email}, ${getRoleLabel(member.role)}`;
 
     return (
-        <View
-            style={[styles.memberRow, !isLast && styles.memberDivider]}
-            accessible
-            accessibilityLabel={`${member.name}${isCurrentUser ? ' (dig)' : ''}, ${member.email}, ${member.role}`}>
+        <Pressable
+            style={({ pressed }) => [
+                styles.memberRow,
+                !isLast && styles.memberDivider,
+                pressed && onPress && { backgroundColor: companiesColors.graySoft },
+            ]}
+            onPress={onPress}
+            disabled={!onPress}
+            accessibilityRole={onPress ? 'button' : undefined}
+            accessibilityLabel={label}
+            accessibilityHint={onPress ? 'Åbner handlinger for medarbejderen' : undefined}>
             <View style={[styles.memberAvatar, { backgroundColor: colors.background }]}>
                 <Text style={[styles.memberAvatarText, { color: colors.color }]}>{getInitials(member.name)}</Text>
             </View>
@@ -304,78 +346,12 @@ function MemberRow({ member, isCurrentUser, isLast }) {
                     <Text style={styles.memberName} numberOfLines={1}>{member.name}</Text>
                     {isCurrentUser && <Text style={styles.memberYou}>(dig)</Text>}
                 </View>
-                <Text style={styles.memberEmail} numberOfLines={1} selectable>{member.email}</Text>
+                <Text style={styles.memberEmail} numberOfLines={1}>{member.email}</Text>
                 {!member.is_active && <Text style={styles.memberInactive}>Deaktiveret konto</Text>}
             </View>
 
             <RoleBadge role={member.role} />
-        </View>
+            {onPress && <ChevronRight size={18} color={companiesColors.chevron} />}
+        </Pressable>
     );
-}
-
-function InvitationList({ invitations, error }) {
-    if (error) {
-        return (
-            <View style={styles.memberGroup}>
-                <View style={styles.emptyMembers}>
-                    <Text style={styles.emptyDescription}>{error}</Text>
-                    <Text style={styles.emptyDescription}>Prøv at trække ned for at opdatere.</Text>
-                </View>
-            </View>
-        )
-    }
-
-    if (invitations.length === 0) {
-        return (
-            <View style={styles.memberGroup}>
-                <View style={styles.emptyMembers}>
-                    <Mail size={36} color={companiesColors.muted} strokeWidth={1.5} />
-                    <Text style={styles.emptyTitle}>Ingen invitationer</Text>
-                    <Text style={styles.emptyDescription}>
-                        Invitationer, der er sendt til andre brugere, vises her.
-                    </Text>
-                </View>
-            </View>
-        );
-    }
-
-    return (
-        <View style={styles.memberGroup}>
-            {invitations.map((invitation, index) => (
-                <InvitationRow
-                    key={invitation.id}
-                    invitation={invitation}
-                    isLast={index === invitations.length - 1}
-                />
-            ))}
-        </View>
-    );
-}
-
-function InvitationRow({ invitation, isLast }) {
-    const expiresAt = formatDate(invitation.expires_at);
-    const details = [
-        `Inviteret af ${invitation.invited_by_name}`,
-        expiresAt && `udløber ${expiresAt}`,
-    ]
-    .filter(Boolean)
-    .join(' • ');
-
-    return (
-        <View
-            style={[styles.memberRow, !isLast && styles.memberDivider]}
-            accessible
-            accessibilityLabel={`${invitation.email}, ${getRoleLabel(invitation.role)}, ${details}`}>
-            <View style={[styles.memberAvatar, { backgroundColor: companiesColors.graySoft }]}>
-                <Mail size={18} color={companiesColors.muted} />
-            </View>
-
-            <View style={styles.memberBody}>
-                <Text style={styles.memberName} numberOfLines={1}>{invitation.email}</Text>
-                <Text style={styles.memberEmail} numberOfLines={1}>{details}</Text>
-            </View>
-
-            <RoleBadge role={invitation.role} />
-        </View>
-    )
 }
