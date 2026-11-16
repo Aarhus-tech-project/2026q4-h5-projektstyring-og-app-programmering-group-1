@@ -21,6 +21,7 @@ import http from "../../http/http";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { getInventoryItems, getShoppingList } from "../services/inventoryService";
 import { FILTERS, getInventoryCounts } from "../utils/inventoryUtils";
+import { isCompanyManager } from "../utils/companyRoles";
 import { getNotifications } from "../services/notificationService";
 import { SaveExpoToken, getNotificationPermission } from "../utils/notificationUtils";
 
@@ -124,8 +125,13 @@ export default function DashboardScreen() {
     );
 
     const companiesWithStats = companies.map((c) => ({ ...c, ...stats[c.id] }));
-    const totalItems = companiesWithStats.reduce((sum, c) => sum + (c.itemCount ?? 0), 0);
-    const totalWarnings = companiesWithStats.reduce(
+    // "Dit overblik" er kun for ejer og leder; medarbejdere ser ikke kortet
+    const managedCompanies = companiesWithStats.filter((c) => isCompanyManager(c.role));
+    const showSummary = managedCompanies.length > 0;
+    // Kun medarbejder i alle sine virksomheder: overskriften skal ikke sige "Mine virksomheder"
+    const isEmployeeOnly = hasCompanies && !showSummary;
+    const totalItems = managedCompanies.reduce((sum, c) => sum + (c.itemCount ?? 0), 0);
+    const totalWarnings = managedCompanies.reduce(
         (sum, c) => sum + (c.expiringSoonCount ?? 0) + (c.lowStockCount ?? 0) + (c.outOfStockCount ?? 0),
         0
     );
@@ -208,8 +214,10 @@ export default function DashboardScreen() {
                 </TouchableOpacity>
 
                 <View style={styles.header}>
-                    <Text style={styles.title} numberOfLines={1}>Mine virksomheder</Text>
-                    <Text style={styles.subtitle} numberOfLines={1}>Vælg en virksomhed for at se dit lager</Text>
+                    <Text style={styles.title} numberOfLines={1}>{isEmployeeOnly ? 'Mine arbejdspladser' : 'Mine virksomheder'}</Text>
+                    <Text style={styles.subtitle} numberOfLines={1}>
+                        {isEmployeeOnly ? 'Vælg en arbejdsplads for at se lageret' : 'Vælg en virksomhed for at se dit lager'}
+                    </Text>
                 </View>
 
                 <Pressable
@@ -242,17 +250,18 @@ export default function DashboardScreen() {
                             />
                         }>
 
+                        {showSummary && (
                         <Pressable
                             style={({ pressed }) => [styles.summaryCard, pressed && styles.pressed]}
                             onPress={() => navigation.navigate('Companies')}
                             accessibilityRole="button"
-                            accessibilityLabel={`Dit overblik: ${companies.length} ${companies.length === 1 ? 'virksomhed' : 'virksomheder'}, ${totalItems} varer, ${totalWarnings} advarsler. Åbn virksomheder`}>
+                            accessibilityLabel={`Dit overblik: ${managedCompanies.length} ${managedCompanies.length === 1 ? 'virksomhed' : 'virksomheder'}, ${totalItems} varer, ${totalWarnings} advarsler. Åbn virksomheder`}>
                             <Text style={styles.summaryTitle}>Dit overblik</Text>
                             <View style={styles.summaryMain}>
                                 <Layers size={34} color="#FFFFFF" />
-                                <Text style={styles.summaryCount}>{companies.length}</Text>
+                                <Text style={styles.summaryCount}>{managedCompanies.length}</Text>
                                 <Text style={styles.summaryCountLabel}>
-                                    {companies.length === 1 ? 'virksomhed' : 'virksomheder'}
+                                    {managedCompanies.length === 1 ? 'virksomhed' : 'virksomheder'}
                                 </Text>
                             </View>
 
@@ -274,6 +283,7 @@ export default function DashboardScreen() {
                                 </View>
                             </View>
                         </Pressable>
+                        )}
 
                         <View style={styles.companyGrid}>
                             {companiesWithStats.map((company, index) => (
@@ -290,13 +300,16 @@ export default function DashboardScreen() {
                         </View>
                     </ScrollView>
 
-                    <Pressable
-                        style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
-                        onPress={addCompany}
-                        accessibilityRole="button"
-                        accessibilityLabel="Tilføj virksomhed">
-                        <Plus size={28} color="#FFFFFF" />
-                    </Pressable>
+                    {/* Kun ejer og leder kan oprette virksomheder herfra */}
+                    {showSummary && (
+                        <Pressable
+                            style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
+                            onPress={addCompany}
+                            accessibilityRole="button"
+                            accessibilityLabel="Tilføj virksomhed">
+                            <Plus size={28} color="#FFFFFF" />
+                        </Pressable>
+                    )}
                 </>
             ) : (
                 <View style={styles.emptyState}>
