@@ -25,7 +25,6 @@
 }
 
 {$SITE_ADDRESS:https://localhost} {
-	tls internal
 
 	encode gzip zstd
 
