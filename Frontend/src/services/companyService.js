@@ -54,3 +54,15 @@ export async function removeMember(companyID, memberID) {
     const response = await http.delete(`/company/${companyID}/members/${memberID}`);
     return getResponseData(response);
 }
+
+export async function getMyInvitations() {
+    const response = await http.get('/invitations');
+    const data = getResponseData(response);
+    return Array.isArray(data) ? data : [];
+}
+
+export async function acceptInvitation(invitationId) {
+    const response = await http.post(`/invitations/${invitationId}/accept`);
+    const data = getResponseData(response);
+    return Array.isArray(data) ? data : [];
+}

@@ -117,7 +117,7 @@ export default function LoginScreen({ navigation, route }) {
                             >
 
                             <Text style={styles.loginButtonText}>
-                                {isLoading ? 'Logger ind...' : 'logind'}
+                                {isLoading ? 'Logger ind...' : 'log ind'}
                                 </Text>
                         </Pressable>
 

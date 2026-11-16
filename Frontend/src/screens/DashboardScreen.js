@@ -23,6 +23,7 @@ import { getInventoryItems, getShoppingList } from "../services/inventoryService
 import { FILTERS, getInventoryCounts } from "../utils/inventoryUtils";
 import { isCompanyManager } from "../utils/companyRoles";
 import { getNotifications } from "../services/notificationService";
+import { getMyInvitations } from "../services/companyService";
 import { SaveExpoToken, getNotificationPermission } from "../utils/notificationUtils";
 
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -105,17 +106,27 @@ export default function DashboardScreen() {
         }, [loadStats])
     );
 
-    // Antal ulæste notifikationer til badget på klokken
+    // Tal på klokken: ulæste notifikationer + invitationer der venter på svar
     const [unreadCount, setUnreadCount] = useState(0);
 
     const loadUnreadCount = useCallback(async () => {
-        try {
-            const data = await getNotifications();
-            setUnreadCount(Array.isArray(data) ? data.filter((n) => !n.read_at).length : 0);
-        } catch (error) {
-            console.error('Error loading notifications:', error);
+        const [notificationsResult, invitationsResult] = await Promise.allSettled([
+            getNotifications(),
+            getMyInvitations(),
+        ]);
+
+        if (notificationsResult.status === 'rejected' && invitationsResult.status === 'rejected') {
+            console.error('Error loading badge count:', notificationsResult.reason);
+            return;
         }
+
+        const notifications = notificationsResult.status === 'fulfilled' ? notificationsResult.value : [];
+        const invitations = invitationsResult.status === 'fulfilled' ? invitationsResult.value : [];
+
+        const unread = Array.isArray(notifications) ? notifications.filter((n) => !n.read_at).length : 0;
+        setUnreadCount(unread + invitations.length);
     }, []);
+
 
     // Opdatér når man kommer tilbage fra notifikationsskærmen
     useFocusEffect(
