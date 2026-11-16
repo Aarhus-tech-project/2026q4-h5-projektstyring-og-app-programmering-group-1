@@ -33,6 +33,18 @@ The database for LagerKlar runs as a PostgreSQL 16 container. The schema in `dat
 
    The `db` service should show `healthy`.
 |
+## Running the backend in Docker
+
+`docker compose up -d --build` starts three containers: `db` (PostgreSQL), `backend` (the Go API, built from `Dockerfile`) and `caddy` (reverse proxy on port 80/443 to the backend).
+
+- API directly: `http://localhost:8080`, or through Caddy: `http://localhost`
+- After changing Go code, rebuild just the backend: `docker compose up -d --build backend`
+- Logs: `docker compose logs -f backend`
+- Inside Docker, `DATABASE_URL` is set automatically to use the `db` host, so the `localhost` URL in `.env` still works for `go run .`
+- If port 8080 is taken (e.g. by `go run .`), set `BACKEND_PORT=8081` in `.env`
+
+To run the backend on your machine with `go run .` instead, start only the database: `docker compose up -d db`.
+
 ## Connecting from the Go backend
 
 Use the connection string from `.env`:

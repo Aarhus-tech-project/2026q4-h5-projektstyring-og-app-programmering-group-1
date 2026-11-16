@@ -6,9 +6,9 @@
 {$SITE_ADDRESS::80} {
 	encode gzip zstd
 
-	# The Go backend runs on the host machine (go run .), so we reach it
-	# through host.docker.internal. Set BACKEND_UPSTREAM=backend:8080 if the
-	# backend is later added as a service in docker-compose.yml.
+	# docker-compose.yml sets BACKEND_UPSTREAM=backend:8080 (the backend
+	# container). The fallback host.docker.internal:8080 is for running the
+	# backend on the host with `go run .`.
 	reverse_proxy {$BACKEND_UPSTREAM:host.docker.internal:8080}
 
 	log {
