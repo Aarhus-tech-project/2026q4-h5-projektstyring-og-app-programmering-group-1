@@ -59,7 +59,7 @@ async function registerForPushNotificationsAsync() {
         ).data;
       } catch (e) {
         // Previously the error text was sent to the server as if it were a push token.
-        console.error(`Failed to get Expo push token: ${e}`);
+        console.log(`Failed to get Expo push token: ${e}`);
         return null;
       }
     } else {

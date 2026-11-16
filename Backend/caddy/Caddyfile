@@ -1,0 +1,18 @@
+# Caddy reverse proxy for the LagerKlar Go/Gin backend.
+#
+# SITE_ADDRESS defaults to ":80" (plain HTTP on port 80).
+# Set SITE_ADDRESS in .env to a real domain (e.g. api.example.com) and Caddy
+# will automatically obtain and renew a Let's Encrypt HTTPS certificate.
+{$SITE_ADDRESS::80} {
+	encode gzip zstd
+
+	# The Go backend runs on the host machine (go run .), so we reach it
+	# through host.docker.internal. Set BACKEND_UPSTREAM=backend:8080 if the
+	# backend is later added as a service in docker-compose.yml.
+	reverse_proxy {$BACKEND_UPSTREAM:host.docker.internal:8080}
+
+	log {
+		output stdout
+		format console
+	}
+}
