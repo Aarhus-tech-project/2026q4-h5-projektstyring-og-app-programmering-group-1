@@ -218,6 +218,44 @@ const styles = StyleSheet.create({
         flex: 1,
     },
 
+    actionRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginTop: 4,
+    },
+
+    actionButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        borderRadius: 12,
+        paddingVertical: 12,
+    },
+
+    actionButtonPrimary: {
+        backgroundColor: companiesColors.primary,
+    },
+
+    actionButtonSecondary: {
+        backgroundColor: companiesColors.card,
+        borderWidth: 1,
+        borderColor: companiesColors.border,
+    },
+
+    actionButtonTextPrimary: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontWeight: '600',
+    },
+
+    actionButtonTextSecondary: {
+        color: companiesColors.text,
+        fontSize: 15,
+        fontWeight: '600',
+    },
+
     sectionHeader: {
         flexDirection: 'row',
         alignItems: 'center',

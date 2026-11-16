@@ -15,6 +15,21 @@ export const getRoleLabel = (role) => ROLE_LABELS[role] ?? role ?? '';
 
 export const isCompanyManager = (role) => role === ROLES.OWNER || role === ROLES.MANAGER;
 
+export const getInvitableRoles = (myRole) => {
+    if (myRole === ROLES.OWNER) return [ROLES.MANAGER, ROLES.EMPLOYEE];
+    if (myRole === ROLES.MANAGER) return [ROLES.EMPLOYEE];
+    return [];
+}
+
+export const canPromote = (myRole, memberRole) =>
+    myRole === ROLES.OWNER && memberRole === ROLES.EMPLOYEE;
+
+export const canRemove = (myRole, memberRole) => {
+    if (myRole === ROLES.OWNER) return memberRole === ROLES.MANAGER || memberRole === ROLES.EMPLOYEE;
+    if (myRole === ROLES.MANAGER) return memberRole === ROLES.EMPLOYEE;
+    return false;
+}
+
 export const getInitials = (name = '') =>
     name
         .split(' ')
