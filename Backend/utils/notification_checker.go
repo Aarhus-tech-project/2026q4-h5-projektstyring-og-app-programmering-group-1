@@ -15,8 +15,10 @@ import (
 )
 
 const (
-	NotificationTypeExpiry   = "udloeb"
-	NotificationTypeLowStock = "lav_beholdning"
+	NotificationTypeExpiry       = "udloeb"
+	NotificationTypeLowStock     = "lav_beholdning"
+	NotificationTypeOutOfStock   = "udsolgt"
+	NotificationTypeShoppingList = "indkoebsliste"
 
 	notificationCheckInterval = 5 * time.Minute
 )
@@ -62,7 +64,7 @@ func RunNotificationCheck(ctx context.Context, ignoreCheckTime bool) {
 	ctx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 
-	expiring, err := findExpiringBatches(ctx, ignoreCheckTime)
+	expiring, err := findExpiringBatches(ctx, ignoreCheckTime, "")
 	if err != nil {
 		log.Println("Notification check (expiry) error:", err)
 	}
@@ -126,14 +128,45 @@ func notificationTitle(n pendingNotification) string {
 		title = "Udløber snart"
 	case NotificationTypeLowStock:
 		title = "Lav beholdning"
+	case NotificationTypeOutOfStock:
+		title = "Ikke på lager"
+	case NotificationTypeShoppingList:
+		title = "Indkøbsliste"
 	}
 	return n.CompanyName + ": " + title
+}
+
+// NotifyBatchExpiry is called right after goods are received (Modtag vare). If the new batch
+// already expires within the company's days_before_expiry, every member is notified now,
+// including the person who received it, instead of waiting for the next scheduled check.
+// It holds the same lock as the scheduled check, and both skip batches that were already
+// notified about, so nobody gets the notification twice.
+func NotifyBatchExpiry(batchID string) {
+	go func() {
+		notificationCheckMu.Lock()
+		defer notificationCheckMu.Unlock()
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+
+		expiring, err := findExpiringBatches(ctx, true, batchID)
+		if err != nil {
+			log.Println("Expiry notification after receiving error:", err)
+			return
+		}
+		for _, n := range expiring {
+			if err := saveAndSendNotification(ctx, n); err != nil {
+				log.Println("Expiry notification after receiving error:", err)
+			}
+		}
+	}()
 }
 
 // findExpiringBatches returns one notification per company member for each batch with
 // stock left that expires within the company's days_before_expiry and has not been
 // notified about yet. Dates use the database's time zone (Europe/Copenhagen).
-func findExpiringBatches(ctx context.Context, ignoreCheckTime bool) ([]pendingNotification, error) {
+// batchID limits the check to one batch; "" checks all batches.
+func findExpiringBatches(ctx context.Context, ignoreCheckTime bool, batchID string) ([]pendingNotification, error) {
 	rows, err := database.DB.QueryContext(
 		ctx,
 		`SELECT
@@ -154,6 +187,8 @@ func findExpiringBatches(ctx context.Context, ignoreCheckTime bool) ([]pendingNo
 		 WHERE b.remaining_quantity > 0
 		   AND i.archived_at IS NULL -- skip deleted (archived) items
 		   AND ($1 OR localtime >= COALESCE(rs.daily_check_time, '08:00'))
+		   -- NULLIF: without a batch id every batch is checked ('' is never cast to uuid)
+		   AND (NULLIF($2, '') IS NULL OR b.id = NULLIF($2, '')::uuid)
 		   AND b.expiry_date <= current_date + COALESCE(rs.days_before_expiry, 3)
 		   AND NOT EXISTS (
 			 SELECT 1 FROM notifications n
@@ -162,6 +197,7 @@ func findExpiringBatches(ctx context.Context, ignoreCheckTime bool) ([]pendingNo
 			   AND n.type = 'udloeb'
 		   )`,
 		ignoreCheckTime,
+		batchID,
 	)
 	if err != nil {
 		return nil, err
@@ -188,8 +224,9 @@ func findExpiringBatches(ctx context.Context, ignoreCheckTime bool) ([]pendingNo
 	return result, rows.Err()
 }
 
-// findLowStockItems returns one notification per company member for each item at or
-// below its minimum quantity, unless the user already got one for that item today.
+// findLowStockItems returns one notification per ejer/leder for each item at or below its
+// minimum quantity, unless the user already got a low stock or sold out notification for
+// that item today (e.g. right after someone used it, see NotifyStockAfterUse).
 func findLowStockItems(ctx context.Context, ignoreCheckTime bool) ([]pendingNotification, error) {
 	rows, err := database.DB.QueryContext(
 		ctx,
@@ -222,11 +259,12 @@ func findLowStockItems(ctx context.Context, ignoreCheckTime bool) ([]pendingNoti
 		 JOIN company_memberships cm ON cm.company_id = co.id
 		 LEFT JOIN reminder_settings rs ON rs.company_id = co.id
 		 WHERE ($1 OR localtime >= COALESCE(rs.daily_check_time, '08:00'))
+		   AND cm.role IN ('ejer', 'leder')
 		   AND NOT EXISTS (
 			 SELECT 1 FROM notifications n
 			 WHERE n.user_id = cm.user_id
 			   AND n.item_id = s.id
-			   AND n.type = 'lav_beholdning'
+			   AND n.type IN ('lav_beholdning', 'udsolgt')
 			   AND n.sent_at >= current_date
 		   )`,
 		ignoreCheckTime,

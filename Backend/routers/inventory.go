@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"lagerklar/backend/database"
+	"lagerklar/backend/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,6 +25,10 @@ type inventoryItemResponse struct {
 	Unit           string  `json:"unit"`
 	MinQuantity    float64 `json:"minQuantity"`
 	NextExpiryDate *string `json:"nextExpiryDate,omitempty"`
+	// Path to GET .../items/:itemID/image (with ?v= so a new upload is not served from cache), or omitted without a picture
+	ImageURL *string `json:"imageUrl,omitempty"`
+	// Number of batches that still have stock; with 2 or more the app asks which one "Brug" takes from
+	BatchCount int `json:"batchCount"`
 }
 
 func GetInventoryItems(c *gin.Context) {
@@ -82,7 +87,12 @@ COALESCE(c.name, ''),
 COALESCE(SUM(b.remaining_quantity), 0)::double precision,
 i.unit,
 i.min_quantity::double precision,
-MIN(b.expiry_date) FILTER (WHERE b.remaining_quantity > 0)
+MIN(b.expiry_date) FILTER (WHERE b.remaining_quantity > 0),
+CASE WHEN i.image_url IS NOT NULL
+     THEN '/companies/' || i.company_id::text || '/items/' || i.id::text || '/image?v='
+          || COALESCE((EXTRACT(EPOCH FROM i.image_updated_at) * 1000)::bigint, 0)::text
+END,
+COUNT(b.id) FILTER (WHERE b.remaining_quantity > 0)
 FROM items i
 LEFT JOIN categories c
 ON c.id = i.category_id
@@ -116,6 +126,7 @@ ORDER BY c.name NULLS LAST, i.name`,
 	for rows.Next() {
 		var item inventoryItemResponse
 		var nextExpiry sql.NullTime
+		var imageURL sql.NullString
 
 		if err := rows.Scan(
 			&item.ID,
@@ -125,6 +136,8 @@ ORDER BY c.name NULLS LAST, i.name`,
 			&item.Unit,
 			&item.MinQuantity,
 			&nextExpiry,
+			&imageURL,
+			&item.BatchCount,
 		); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success": false,
@@ -137,6 +150,10 @@ ORDER BY c.name NULLS LAST, i.name`,
 		if nextExpiry.Valid {
 			expiryDate := nextExpiry.Time.Format(time.DateOnly)
 			item.NextExpiryDate = &expiryDate
+		}
+
+		if imageURL.Valid {
+			item.ImageURL = &imageURL.String
 		}
 
 		items = append(items, item)
@@ -434,6 +451,9 @@ RETURNING id::text`,
 		})
 		return
 	}
+
+	// If the goods already expire soon, tell the members now instead of at the next scheduled check
+	utils.NotifyBatchExpiry(batchID)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
@@ -736,6 +756,10 @@ type shoppingListEntryResponse struct {
 	Name     string  `json:"name"`
 	Quantity float64 `json:"quantity"`
 	Unit     string  `json:"unit"`
+	// Who put the item on the list, and when (shopping_list_items.created_by / created_at)
+	AddedByID   string    `json:"addedById"`
+	AddedByName string    `json:"addedByName"`
+	AddedAt     time.Time `json:"addedAt"`
 }
 
 type shoppingListCategoryResponse struct {
@@ -759,7 +783,10 @@ i.name,
 COALESCE(c.id::text, ''),
 COALESCE(c.name, 'Uden kategori'),
 sli.quantity::double precision,
-i.unit
+i.unit,
+sli.created_by::text,
+COALESCE(u.name, ''),
+sli.created_at
 FROM shopping_list_items sli
 JOIN items i
 ON i.id = sli.item_id
@@ -767,6 +794,8 @@ ON i.id = sli.item_id
 LEFT JOIN categories c
 ON c.id = i.category_id
    AND c.company_id = i.company_id
+LEFT JOIN users u
+ON u.id = sli.created_by
 WHERE sli.company_id = $1::uuid
   AND i.archived_at IS NULL
 ORDER BY c.name NULLS LAST, i.name`,
@@ -798,6 +827,9 @@ ORDER BY c.name NULLS LAST, i.name`,
 			&categoryName,
 			&entry.Quantity,
 			&entry.Unit,
+			&entry.AddedByID,
+			&entry.AddedByName,
+			&entry.AddedAt,
 		); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success": false,
@@ -887,6 +919,8 @@ func AddShoppingListItem(c *gin.Context) {
 
 	var lineID string
 	var updatedQuantity float64
+	// xmax = 0 means the row was inserted; otherwise ON CONFLICT updated an existing line
+	var isNewLine bool
 	err := database.DB.QueryRowContext(
 		c.Request.Context(),
 		`INSERT INTO shopping_list_items (
@@ -901,12 +935,12 @@ ON CONFLICT (company_id, item_id)
 DO UPDATE SET
 quantity = shopping_list_items.quantity + EXCLUDED.quantity,
 updated_at = now()
-RETURNING id::text, quantity::double precision`,
+RETURNING id::text, quantity::double precision, (xmax = 0)`,
 		companyID,
 		request.ItemID,
 		quantity,
 		c.GetString("userID"),
-	).Scan(&lineID, &updatedQuantity)
+	).Scan(&lineID, &updatedQuantity, &isNewLine)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -924,6 +958,11 @@ RETURNING id::text, quantity::double precision`,
 			"data":    gin.H{},
 		})
 		return
+	}
+
+	// Tell ejer and leder (in the background) — only for a new line, not when the amount grew
+	if isNewLine {
+		utils.NotifyShoppingListAdded(companyID, request.ItemID, c.GetString("userID"), quantity)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -1072,6 +1111,9 @@ type adjustInventoryStockRequest struct {
 	Quantity     float64 `json:"quantity"`
 	PurchaseDate string  `json:"purchaseDate"`
 	ExpiryDate   string  `json:"expiryDate"`
+	// Optional for "minus": take the stock from this batch only.
+	// Without it, the batch that expires first is used (as before).
+	BatchID string `json:"batchId"`
 }
 
 type inventoryBatchStock struct {
@@ -1119,6 +1161,16 @@ func AdjustInventoryStock(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"message": "Quantity must be greater than zero",
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	request.BatchID = strings.TrimSpace(request.BatchID)
+	if request.BatchID != "" && !inventoryIDPattern.MatchString(request.BatchID) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Invalid batch ID",
 			"data":    gin.H{},
 		})
 		return
@@ -1185,6 +1237,9 @@ WHERE id = $1::uuid
 		})
 		return
 	}
+
+	// Stock before this change; used after saving to see if it just became low or ran out
+	var stockBefore float64
 
 	if request.Direction == "plus" {
 		var batchID string
@@ -1278,6 +1333,29 @@ RETURNING id::text`,
 		}
 		rows.Close()
 
+		// The whole item's stock, used for the low stock / sold out notifications
+		stockBefore = availableQuantity
+
+		// The user picked a batch: only take from that one
+		if request.BatchID != "" {
+			var chosen []inventoryBatchStock
+			for _, batch := range batches {
+				if batch.ID == request.BatchID {
+					chosen = append(chosen, batch)
+				}
+			}
+			if len(chosen) == 0 {
+				c.JSON(http.StatusNotFound, gin.H{
+					"success": false,
+					"message": "Batch not found or already used up",
+					"data":    gin.H{},
+				})
+				return
+			}
+			batches = chosen
+			availableQuantity = chosen[0].RemainingQuantity
+		}
+
 		if request.Quantity > availableQuantity {
 			c.JSON(http.StatusConflict, gin.H{
 				"success": false,
@@ -1346,6 +1424,11 @@ RETURNING id::text`,
 			"data":    gin.H{},
 		})
 		return
+	}
+
+	// Brug: tell ejer and leder (in the background) if the item just became low or ran out
+	if request.Direction == "minus" {
+		utils.NotifyStockAfterUse(companyID, itemID, c.GetString("userID"), stockBefore, stockBefore-request.Quantity)
 	}
 
 	c.JSON(http.StatusOK, gin.H{

@@ -193,3 +193,34 @@ func HandleDeleteNotification(c *gin.Context) {
 		"data":    gin.H{},
 	})
 }
+
+// DELETE /v1/notifications
+// "Ryd alle": hides all of the user's notifications. Like the single delete it only sets
+// deleted_at, so the rows stay and the checks that prevent repeated notifications still see them.
+func HandleDeleteAllNotifications(c *gin.Context) {
+	result, err := database.DB.ExecContext(
+		c.Request.Context(),
+		`UPDATE notifications
+		 SET deleted_at = now()
+		 WHERE user_id = $1::uuid AND deleted_at IS NULL`,
+		c.GetString("userID"),
+	)
+	if err != nil {
+		log.Println("Delete all notifications error:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Could not delete notifications",
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	deleted, _ := result.RowsAffected()
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Notifications deleted",
+		"data": gin.H{
+			"deleted": deleted,
+		},
+	})
+}

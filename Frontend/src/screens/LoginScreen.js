@@ -47,13 +47,14 @@ export default function LoginScreen({ navigation, route }) {
             // console.log i stedet for console.error, så der ikke vises en rød fejl-overlay i appen
             console.log('Login failed:', error?.response?.status ?? error?.message);
 
+            // Alert.alert(title, message) — the third argument must be a list of buttons, not text,
+            // otherwise React Native throws "undefined is not a function"
             Alert.alert(
                 'Kunne ikke logge ind',
-                error.message || 'Der optod en fejl under login',      
                 getErrorMessage(error, {
                     400: 'Indtast en gyldig email og password.',
                     401: 'Forkert email eller password.',
-                    fallback: 'Der opstod en fejl under login. Prøv igen.',
+                    fallback: error?.message || 'Der opstod en fejl under login. Prøv igen.',
                 })
             );
         } finally {
