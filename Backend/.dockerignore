@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+*.exe
+*.test
+*.out
+bin/
+vendor/
+caddy/
+docker-compose.yml
+Dockerfile
+.dockerignore
+README.md

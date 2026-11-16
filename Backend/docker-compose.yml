@@ -14,18 +14,34 @@ services:
       timeout: 5s
       retries: 5
 
+  backend:
+    build: .
+    container_name: lagerklar-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Inside Docker the database is reached by its service name, not localhost
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+      PORT: "8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
   caddy:
     image: caddy:2.8-alpine
     container_name: lagerklar-caddy
     restart: unless-stopped
     env_file: .env
+    environment:
+      BACKEND_UPSTREAM: backend:8080
     ports:
       - "80:80"
       - "443:443"
       - "443:443/udp"
-    extra_hosts:
-      # Lets the container reach the Go backend running on the host (also on Linux)
-      - "host.docker.internal:host-gateway"
+    depends_on:
+      - backend
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
