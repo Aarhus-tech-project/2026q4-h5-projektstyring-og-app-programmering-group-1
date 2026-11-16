@@ -4,13 +4,16 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } 
 import { useFocusEffect } from '@react-navigation/native';
 import { Building2, CalendarDays, ChevronLeft, ChevronRight, Lock, MapPin, SearchX, Users, Mail, UserPlus } from 'lucide-react-native';
 import styles, { companiesColors, roleColors } from '../styles/companiesStyles';
-import { getCompanyDetails, getCompanyInvitations, cancelInvitation, promoteMember, removeMember } from '../services/companyService';
+import { getCompanyDetails, getCompanyInvitations, cancelInvitation, createInvitation, promoteMember, removeMember } from '../services/companyService';
 import { getErrorMessage } from '../../http/http';
 import { canPromote, canRemove, formatDate, getInitials, getRoleLabel } from '../utils/companyRoles';
 import { useAuth } from '../AuthContext/AuthContext';
 import RoleBadge from '../components/RoleBadge';
 import InvitationModal from '../components/InvitationModal';
 import MemberActionsModal from '../components/MemberActionsModal';
+import InviteMemberModal from '../components/InviteMemberModal';
+
+
 
 
 // Adgangsfejl får deres egen skærm, så brugeren ikke bare ser "prøv igen"
@@ -41,6 +44,8 @@ export default function CompanyDetailScreen({ navigation, route }) {
     const [invitationsError, setInvitationsError] = useState(null);
     const [selectedMember, setSelectedMember] = useState(null);
     const [isInvitationsVisible, setIsInvitationsVisible] = useState(false);
+    const [isInviteVisible, setIsInviteVisible] = useState(false);
+
 
 
     const loadDetails = useCallback(async ({ isRefresh = false } = {}) => {
@@ -126,6 +131,11 @@ export default function CompanyDetailScreen({ navigation, route }) {
         }
     };
 
+    const handleInvite = async ({ email, role }) => {
+        await createInvitation(companyId, { email, role });
+        await loadDetails();
+    };
+
 
     const renderContent = () => {
         if (loading) {
@@ -191,7 +201,7 @@ export default function CompanyDetailScreen({ navigation, route }) {
                 <View style={styles.actionRow}>
                     <Pressable
                         style={({ pressed }) => [styles.actionButton, styles.actionButtonPrimary, pressed && styles.pressed]}
-                        onPress={() => {}}
+                        onPress={() => setIsInviteVisible(true)}
                         accessibilityRole="button">
                             <UserPlus size={18} color="#FFFFFF" />
                             <Text style={styles.actionButtonTextPrimary}>Inviter</Text>
@@ -277,6 +287,14 @@ export default function CompanyDetailScreen({ navigation, route }) {
                 onClose={() => setSelectedMember(null)}
                 onPromote={handlePromoteMember}
                 onRemove={handleRemoveMember}
+            />
+
+            <InviteMemberModal
+                visible={isInviteVisible}
+                myRole={company?.role}
+                onClose={() => setIsInviteVisible(false)}
+
+                onInvite={handleInvite}
             />
         </SafeAreaView>
     );
