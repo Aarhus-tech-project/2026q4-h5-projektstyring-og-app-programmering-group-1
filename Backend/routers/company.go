@@ -238,6 +238,23 @@ func HandleDeleteCompany(c *gin.Context) {
 		return
 	}
 
+	// stock_movements.batch_id is ON DELETE RESTRICT, so the cascade
+	// companies -> items -> batches is blocked until the history is removed.
+	_, err = tx.ExecContext(
+		c.Request.Context(),
+		`DELETE FROM stock_movements sm
+		 USING batches b, items i
+		 WHERE sm.batch_id = b.id
+		   AND b.item_id = i.id
+		   AND i.company_id = $1::uuid`,
+		companyID,
+	)
+	if err != nil {
+		log.Println("Delete company stock movements database error:", err)
+		writeDeleteCompanyFailed(c)
+		return
+	}
+
 	_, err = tx.ExecContext(
 		c.Request.Context(),
 		`DELETE FROM company_memberships WHERE company_id = $1::uuid`,
