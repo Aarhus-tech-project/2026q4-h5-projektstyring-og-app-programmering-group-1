@@ -1,6 +1,6 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Check, Minus, Pencil, Plus, ShoppingCart } from 'lucide-react-native';
+import { Check, Minus, Pencil, Plus, ShoppingCart, Trash2 } from 'lucide-react-native';
 import { SheetBody } from './InventorySheet';
 import useItemImageSource from './useItemImageSource';
 import styles, { inventoryColors, toneColors } from '../../styles/inventoryStyles';
@@ -19,7 +19,7 @@ import {
 // Adding to the shopping list starts at 1, and the amount is then adjusted with − / +.
 // justCreated: shown right after "Opret vare" — a confirmation line, and only the shopping list button
 // (no Rediger / Modtag vare, since the item was just set up and has nothing in stock yet).
-export default function ItemDetails({ item, shoppingEntry, isAddingToList, justCreated = false, onEdit, onReceive, onAddToShoppingList, onChangeShoppingQuantity }) {
+export default function ItemDetails({ item, shoppingEntry, isAddingToList, justCreated = false, onEdit, onReceive, onAddToShoppingList, onChangeShoppingQuantity, onDelete }) {
     const expiry = formatExpiry(item);
     const expiryTone = getExpiryTone(item.nextExpiryDate);
     const stockColor = isOutOfStock(item) ? inventoryColors.red : isLowStock(item) ? inventoryColors.amber : inventoryColors.text;
@@ -142,6 +142,17 @@ export default function ItemDetails({ item, shoppingEntry, isAddingToList, justC
                                 <Text style={styles.shoppingTagText}>Tilføj</Text>
                             </View>
                         )}
+                    </Pressable>
+                )}
+
+                {!justCreated && onDelete && (
+                    <Pressable
+                        onPress={onDelete}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Slet ${item.name}`}
+                        style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}>
+                        <Trash2 size={18} color={inventoryColors.red} />
+                        <Text style={styles.deleteButtonText}>Slet vare</Text>
                     </Pressable>
                 )}
             </View>
