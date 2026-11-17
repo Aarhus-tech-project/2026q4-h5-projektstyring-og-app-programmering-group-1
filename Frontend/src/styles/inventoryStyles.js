@@ -1004,6 +1004,20 @@ const styles = StyleSheet.create({
         backgroundColor: inventoryColors.primary,
     },
 
+    deleteButton: {
+        height: 48,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+
+    deleteButtonText: {
+        color: inventoryColors.red,
+        fontSize: 17,
+        fontWeight: '600',
+    },
+
     primaryButtonDisabled: {
         backgroundColor: inventoryColors.control,
     },

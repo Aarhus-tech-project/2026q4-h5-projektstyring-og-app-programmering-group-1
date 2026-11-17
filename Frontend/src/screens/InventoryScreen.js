@@ -18,6 +18,7 @@ import {
     adjustInventoryStock,
     createInventoryCategory,
     createInventoryItem,
+    deleteInventoryItem,
     deleteItemImage,
     getInventoryCategories,
     getInventoryItems,
@@ -320,6 +321,30 @@ export default function InventoryScreen({ navigation, route }) {
 
         await Promise.all([loadItems({ silent: true }), loadShoppingList()]);
         showDetails();
+    }
+
+    // "Slet vare": the backend archives the item, so its stock history is kept
+    function confirmDeleteItem(item) {
+        Alert.alert(
+            'Slet vare?',
+            `${item.name} fjernes fra lageret og indkøbslisten. Det kan ikke fortrydes.`,
+            [
+                { text: 'Annuller', style: 'cancel' },
+                { text: 'Slet', style: 'destructive', onPress: () => deleteItem(item.id) },
+            ],
+        );
+    }
+
+    async function deleteItem(itemId) {
+        try {
+            await deleteInventoryItem(companyId, itemId);
+        } catch (error) {
+            Alert.alert('Fejl', error.message || 'Varen kunne ikke slettes.');
+            return;
+        }
+
+        closeSheet();
+        await Promise.all([loadItems({ silent: true }), loadShoppingList()]);
     }
 
     async function createCategory(name) {
@@ -659,6 +684,7 @@ export default function InventoryScreen({ navigation, route }) {
                         onReceive={() => openReceive(sheetItem, true)}
                         onAddToShoppingList={addToShoppingList}
                         onChangeShoppingQuantity={changeShoppingQuantity}
+                        onDelete={() => confirmDeleteItem(sheetItem)}
                     />
                 )}
                 {sheetItem && sheet.mode === SHEET_MODES.EDIT && (
