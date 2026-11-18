@@ -55,8 +55,8 @@ var notificationCheckMu sync.Mutex
 //
 // The scheduled check only handles a company once the local time has passed its
 // daily_check_time (reminder_settings, default 08:00). A triggered check
-// (ignoreCheckTime = true) runs right away. Each user gets one expiry notification
-// per batch, and at most one low stock notification per item per day.
+// (ignoreCheckTime = true) runs right away. Each user gets at most one expiry notification
+// per batch per day, and at most one low stock notification per item per day.
 func RunNotificationCheck(ctx context.Context, ignoreCheckTime bool) {
 	notificationCheckMu.Lock()
 	defer notificationCheckMu.Unlock()
@@ -140,7 +140,7 @@ func notificationTitle(n pendingNotification) string {
 // already expires within the company's days_before_expiry, every member is notified now,
 // including the person who received it, instead of waiting for the next scheduled check.
 // It holds the same lock as the scheduled check, and both skip batches that were already
-// notified about, so nobody gets the notification twice.
+// notified about today, so nobody gets the same day's notification twice.
 func NotifyBatchExpiry(batchID string) {
 	go func() {
 		notificationCheckMu.Lock()
@@ -163,8 +163,9 @@ func NotifyBatchExpiry(batchID string) {
 }
 
 // findExpiringBatches returns one notification per company member for each batch with
-// stock left that expires within the company's days_before_expiry and has not been
-// notified about yet. Dates use the database's time zone (Europe/Copenhagen).
+// stock left that expires within the company's days_before_expiry (default 7). Members are
+// reminded once per day until the expiry date, then once more after it has expired.
+// Dates use the database's time zone (Europe/Copenhagen).
 // batchID limits the check to one batch; "" checks all batches.
 func findExpiringBatches(ctx context.Context, ignoreCheckTime bool, batchID string) ([]pendingNotification, error) {
 	rows, err := database.DB.QueryContext(
@@ -189,12 +190,15 @@ func findExpiringBatches(ctx context.Context, ignoreCheckTime bool, batchID stri
 		   AND ($1 OR localtime >= COALESCE(rs.daily_check_time, '08:00'))
 		   -- NULLIF: without a batch id every batch is checked ('' is never cast to uuid)
 		   AND (NULLIF($2, '') IS NULL OR b.id = NULLIF($2, '')::uuid)
-		   AND b.expiry_date <= current_date + COALESCE(rs.days_before_expiry, 3)
+		   AND b.expiry_date <= current_date + COALESCE(rs.days_before_expiry, 7)
+		   -- Before it expires: once per day (counts down 7, 6, ... 0 days).
+		   -- After it expires: once in total ("er udløbet"), so expired goods do not repeat every day.
 		   AND NOT EXISTS (
 			 SELECT 1 FROM notifications n
 			 WHERE n.user_id = cm.user_id
 			   AND n.batch_id = b.id
 			   AND n.type = 'udloeb'
+			   AND n.sent_at >= LEAST(current_date, b.expiry_date + 1)
 		   )`,
 		ignoreCheckTime,
 		batchID,

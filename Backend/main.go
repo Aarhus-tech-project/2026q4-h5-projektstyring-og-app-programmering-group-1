@@ -132,11 +132,13 @@ func main() {
 		protected.GET("/notifications", routers.HandleGetNotifications)
 		protected.GET("/companies", routers.HandleGetManagedCompanies)
 		protected.GET("/companies/:companyID", routers.HandleGetCompanyDetails)
+		protected.GET("/company/:companyID/reminder-settings", middleware.RequireCompanyRole(model.RoleEjer, model.RoleLeder), routers.HandleGetReminderSettings)
 
 		// PUT //
 		protected.PUT("/user/:userID", routers.HandleUpdateProfile)
 		protected.PUT("/user/:userID/avatar", routers.HandleUploadAvatar)
 		protected.PUT("/user/:userID/password", routers.HandleChangePassword)
+		protected.PUT("/company/:companyID/reminder-settings", middleware.RequireCompanyRole(model.RoleEjer, model.RoleLeder), routers.HandleUpdateReminderSettings)
 
 		// PATCH //
 		protected.PATCH("/notifications/:notificationID/read", routers.HandleMarkNotificationRead)

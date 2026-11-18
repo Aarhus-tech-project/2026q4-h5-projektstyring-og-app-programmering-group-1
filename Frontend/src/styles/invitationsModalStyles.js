@@ -50,6 +50,21 @@ const styles = StyleSheet.create({
     content: {
         paddingHorizontal: 16,
     },
+
+    invitationInfo: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+},
+
+cancelButton: {
+    flexShrink: 0,
+    padding: 6,
+    borderRadius: 16,
+},
+
 });
 
 export default styles;

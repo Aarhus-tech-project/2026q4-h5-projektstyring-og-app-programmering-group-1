@@ -14,6 +14,8 @@ import { UserPlus, X } from 'lucide-react-native';
 import styles from '../styles/inviteMemberModalStyles';
 import { ROLES, getInvitableRoles, getRoleLabel } from '../utils/companyRoles';
 import { getErrorMessage } from '../../http/http';
+import ConfirmationModal from './ConfirmationModal';
+
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -37,6 +39,7 @@ export default function InviteMemberModal({ visible, myRole, onClose, onInvite }
 
     const [email, setEmail] = useState('');
     const [role, setRole] = useState(defaultRole);
+    const [sentTo, setSentTo] = useState('');
     const [error, setError] = useState('');
     const [isSending, setIsSending] = useState(false);
 
@@ -45,6 +48,7 @@ export default function InviteMemberModal({ visible, myRole, onClose, onInvite }
         setRole(defaultRole);
         setError('');
         setIsSending(false);
+        setSentTo('');
     }
 
     function handleEmailChange(text) {
@@ -65,6 +69,7 @@ export default function InviteMemberModal({ visible, myRole, onClose, onInvite }
 
         try {
             await onInvite({ email: trimmedEmail, role });
+            setSentTo(trimmedEmail);
         } catch (err) {
             setError(getInviteErrorMessage(err));
         } finally {
@@ -190,6 +195,16 @@ export default function InviteMemberModal({ visible, myRole, onClose, onInvite }
                     </Pressable>
                 </Pressable>
             </KeyboardAvoidingView>
+            <ConfirmationModal
+                visible={!!sentTo}
+                variant="status"
+                title="Invitation sendt"
+                message={`${sentTo} er inviteret som ${getRoleLabel(role).toLowerCase()}.`}
+                confirmText="OK"
+                hideCancel
+                onConfirm={onClose}
+                onCancel={onClose}
+            />
         </Modal>
 
     );
