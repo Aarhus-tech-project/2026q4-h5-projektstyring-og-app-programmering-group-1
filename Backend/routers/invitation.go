@@ -3,12 +3,14 @@ package routers
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
 
 	"lagerklar/backend/database"
 	"lagerklar/backend/model"
+	"lagerklar/backend/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -63,19 +65,25 @@ func HandleCreateInvitation(c *gin.Context) {
 	}
 	defer tx.Rollback()
 
+	var invitedUserID, companyName, inviterName string
 	var isMember bool
 	err = tx.QueryRowContext(
 		c.Request.Context(),
-		`SELECT EXISTS (
-			SELECT 1
-			FROM company_memberships cm
-			WHERE cm.company_id = $1::uuid AND cm.user_id = u.id
-		 )
-		 FROM users u
-		 WHERE lower(u.email) = $2 AND u.is_active`,
+		`SELECT
+			u.id::text,
+			EXISTS (
+				SELECT 1
+				FROM company_memberships cm
+				WHERE cm.company_id = $1::uuid AND cm.user_id = u.id
+			),
+			(SELECT name FROM companies WHERE id = $1::uuid),
+			(SELECT name FROM users WHERE id = $3::uuid)
+		FROM users u
+		WHERE lower(u.email) = $2 AND u.is_active`,
 		companyID,
 		email,
-	).Scan(&isMember)
+		userID,
+	).Scan(&invitedUserID, &isMember, &companyName, &inviterName)
 	if errors.Is(err, sql.ErrNoRows) {
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
@@ -154,6 +162,8 @@ func HandleCreateInvitation(c *gin.Context) {
 		writeCreateInvitationFailed(c)
 		return
 	}
+
+	go notifyInvitedUser(invitedUserID, companyName, inviterName, invitation.Role)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
@@ -462,4 +472,16 @@ func HandleCancelInvitation(c *gin.Context) {
 			"id": cancelledID,
 		},
 	})
+
+}
+
+func notifyInvitedUser(userID, companyName, inviterName, role string) {
+	err := utils.SendNotification(model.Notification{
+		UserID: userID,
+		Title:  "Ny invitation",
+		Body:   fmt.Sprintf("%s har inviteret dig til %s som %s.", inviterName, companyName, role),
+	})
+	if err != nil && !errors.Is(err, utils.ErrNoPushTokens) {
+		log.Println("Invitation push notification error:", err)
+	}
 }

@@ -122,7 +122,7 @@ export default function MemberActionsModal({ visible, member, myRole, onClose, o
                     <View style={styles.content}>
                         <View style={[listStyles.memberGroup, listStyles.memberRow]}>
                             <View style={[listStyles.memberAvatar, { backgroundColor: colors.background }]}>
-                                <Text style={[listStyles.memberAvartarText, { color: colors.color }]}>
+                                <Text style={[listStyles.memberAvatarText, { color: colors.color }]}>
                                     {getInitials(name)}
                                 </Text>
                             </View>
@@ -166,7 +166,7 @@ export default function MemberActionsModal({ visible, member, myRole, onClose, o
 
             <LoadingModal
                 visible={isWorking}
-                message={pendingAction === 'promote' ? 'Forfremmer...' : 'Fjerener...'}
+                message={pendingAction === 'promote' ? 'Forfremmer...' : 'Fjerner...'}
             />
 
             <ConfirmationModal
