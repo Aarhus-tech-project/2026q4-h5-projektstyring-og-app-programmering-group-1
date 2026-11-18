@@ -114,16 +114,7 @@ func main() {
 	protected.DELETE("/companies/:companyID/shopping-list/items/:lineID", routers.DeleteShoppingListItem)
 	{
 		// GET //
-		protected.GET("/me", func(c *gin.Context) {
-			userID, _ := c.Get("userID")
-			c.JSON(http.StatusOK, gin.H{
-				"success": true,
-				"message": "Authenticated user",
-				"data": gin.H{
-					"user_id": userID,
-				},
-			})
-		})
+		protected.GET("/me", routers.HandleMe)
 		protected.GET("/cvr=:cvr/userID=:userID", routers.ResearchCVR)
 		protected.GET("/invitations", routers.HandleListMyInvitations)
 		protected.GET("/company/:companyID/members", middleware.RequireCompanyRole(model.RoleEjer, model.RoleLeder), routers.HandleListMembers)

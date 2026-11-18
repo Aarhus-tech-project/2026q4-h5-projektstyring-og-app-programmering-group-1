@@ -25,8 +25,10 @@ http.interceptors.response.use((response) => response, async (error) => {
   // Password reset happens while logged out, so its errors must never redirect either.
   const url = error.config?.url ?? '';
   const isPublicAuthRequest = url.includes('/login') || url.includes('/password-reset');
+  // The splash screen's session check (GET /me) handles its own 401 and navigation.
+  const skipAuthRedirect = error.config?.skipAuthRedirect === true;
 
-  if (error.response?.status === 401 && !isPublicAuthRequest) {
+  if (error.response?.status === 401 && !isPublicAuthRequest && !skipAuthRedirect) {
     await AsyncStorage.multiRemove(['token', 'user']);
     resetTo('Login');
   }
