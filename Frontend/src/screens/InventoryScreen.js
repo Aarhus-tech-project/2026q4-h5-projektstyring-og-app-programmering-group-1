@@ -34,6 +34,7 @@ import {
     STATUS_TONES,
     buildCategoryOptions,
     byUrgency,
+    formatAmount,
     getCategoryName,
     getItemSections,
     getItemStatus,
@@ -284,12 +285,24 @@ export default function InventoryScreen({ navigation, route }) {
 
     async function saveReceivedBatch(batch) {
         // The form shows the error itself, so let it throw
-        await receiveInventoryBatch(companyId, sheet.itemId, batch);
-        await loadItems({ silent: true });
+        const item = sheetItem;
+        const result = await receiveInventoryBatch(companyId, sheet.itemId, batch);
+        // The backend also took the received amount off the shopping list
+        await Promise.all([loadItems({ silent: true }), loadShoppingList()]);
 
         // Done: close the whole sheet (also when it was opened from the item details) and show the item list
         closeSheet();
         setActiveTab(TABS.ITEMS);
+
+        const shoppingList = result?.shoppingList;
+        if (item && shoppingList?.status === 'reduced') {
+            Alert.alert(
+                'Indkøbslisten er opdateret',
+                `Der mangler stadig ${formatAmount(shoppingList.remainingQuantity, item.unit)} ${item.name}.`
+            );
+        } else if (item && shoppingList?.status === 'removed') {
+            Alert.alert('Indkøbslisten er opdateret', `${item.name} er fjernet fra indkøbslisten.`);
+        }
     }
 
     async function saveItemChanges(changes, imageChange) {
