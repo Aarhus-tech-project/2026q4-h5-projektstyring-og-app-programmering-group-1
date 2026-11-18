@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import http from '../../http/http';
 import { RemoveExpoToken } from '../utils/notificationUtils';
@@ -13,27 +13,52 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [companies, setCompanies] = useState([]);
     const [token, setToken] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
-
-    useEffect(() => {
-        async function loadStoredUser() {
-            try {
-                const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
-                const storedUser = await AsyncStorage.getItem(USER_KEY);
-
-                if (storedToken && storedUser) {
-                    setToken(storedToken);
-                    setUser(JSON.parse(storedUser));
-                }
-            } catch (error) {
-                console.error('Could not load stored user;', error);
-            } finally {
-                setIsLoading(false);
-            }
+    // Called by SplashScreen. The backend checks the saved token's signature and expiry via GET /me.
+    // Returns:
+    //   'authenticated' - token is valid, user and companies are loaded
+    //   'missing'       - no saved token, no request was made
+    //   'invalid'       - token expired or rejected (401), the saved session is cleared
+    //   'unreachable'   - no answer from the server, the saved token is kept for next start
+    async function restoreSession() {
+        let storedToken = null;
+        let storedUser = null;
+        try {
+            storedToken = await AsyncStorage.getItem(TOKEN_KEY);
+            storedUser = JSON.parse(await AsyncStorage.getItem(USER_KEY) ?? 'null');
+        } catch (error) {
+            console.error('Could not load stored session;', error);
         }
 
-        loadStoredUser();
-    }, []);
+        if (!storedToken || storedToken === 'null' || storedToken === 'undefined') {
+            return 'missing';
+        }
+
+        let meData;
+        try {
+            const response = await http.get('/me', { skipAuthRedirect: true });
+            meData = response.data?.data;
+        } catch (error) {
+            if (error.response?.status === 401) {
+                await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+                return 'invalid';
+            }
+            return 'unreachable';
+        }
+
+        if (!meData?.user) {
+            return 'unreachable';
+        }
+
+        // Keep local-only fields such as avatar_version, but trust the server for the rest
+        const restoredUser = { ...(storedUser ?? {}), ...meData.user };
+        await AsyncStorage.setItem(USER_KEY, JSON.stringify(restoredUser));
+
+        setToken(storedToken);
+        setUser(restoredUser);
+        setCompanies(meData.companies || []);
+
+        return 'authenticated';
+    }
 
     async function login(email, password) {
         const response = await http.post('/login', {
@@ -176,6 +201,7 @@ export function AuthProvider({ children }) {
             companies,
             isAuthenticated: Boolean(user),
             setCompanies,
+            restoreSession,
             login,
             logout,
             updateProfile,
@@ -186,7 +212,7 @@ export function AuthProvider({ children }) {
             // Needed for images that are loaded straight from the API (they require the Authorization header)
             token,
         }),
-        [user, companies, isLoading, avatarSource, token]
+        [user, companies, avatarSource, token]
     );
 
     return (

@@ -1,6 +1,7 @@
 package routers
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"log"
@@ -92,46 +93,8 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	rows, err := database.DB.QueryContext(
-		c.Request.Context(),
-		`SELECT c.id::text, c.name, COALESCE(c.cvr, ''), COALESCE(c.address, ''), cm.role, c.created_at
-		 FROM company_memberships cm
-		 JOIN companies c ON c.id = cm.company_id
-		 WHERE cm.user_id = $1::uuid
-		 ORDER BY c.name`,
-		userID,
-	)
+	companies, err := loadCompanyAccess(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "Could not load company memberships",
-			"data":    gin.H{},
-		})
-		return
-	}
-	defer rows.Close()
-
-	companies := make([]CompanyAccess, 0)
-	for rows.Next() {
-		var company CompanyAccess
-		if err := rows.Scan(
-			&company.ID,
-			&company.Name,
-			&company.CVR,
-			&company.Address,
-			&company.Role,
-			&company.CreatedAt,
-		); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"message": "Could not load company memberships",
-				"data":    gin.H{},
-			})
-			return
-		}
-		companies = append(companies, company)
-	}
-	if err := rows.Err(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": "Could not load company memberships",
@@ -178,6 +141,109 @@ func Login(c *gin.Context) {
 				"name":  name,
 				"email": email,
 				// null when the user has no profile picture
+				"avatar_url": nullStringOrNil(avatarURL),
+			},
+			"companies": companies,
+		},
+	})
+}
+
+// loadCompanyAccess returns every company the user is a member of, with the user's role in it.
+func loadCompanyAccess(ctx context.Context, userID string) ([]CompanyAccess, error) {
+	rows, err := database.DB.QueryContext(
+		ctx,
+		`SELECT c.id::text, c.name, COALESCE(c.cvr, ''), COALESCE(c.address, ''), cm.role, c.created_at
+		 FROM company_memberships cm
+		 JOIN companies c ON c.id = cm.company_id
+		 WHERE cm.user_id = $1::uuid
+		 ORDER BY c.name`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	companies := make([]CompanyAccess, 0)
+	for rows.Next() {
+		var company CompanyAccess
+		if err := rows.Scan(
+			&company.ID,
+			&company.Name,
+			&company.CVR,
+			&company.Address,
+			&company.Role,
+			&company.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		companies = append(companies, company)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return companies, nil
+}
+
+// GET /v1/me
+// RequireAuth has already checked the token's signature and expiry. This returns the same
+// user and companies as login, so the app can restore a saved session on start-up.
+// A token for a user that was deleted or deactivated is answered with 401.
+func HandleMe(c *gin.Context) {
+	userID := c.GetString("userID")
+
+	var name string
+	var email string
+	var isActive bool
+	var avatarURL sql.NullString
+
+	err := database.DB.QueryRowContext(
+		c.Request.Context(),
+		`SELECT name, email, is_active,
+		        CASE WHEN avatar_url IS NOT NULL
+		             THEN '/user/' || id::text || '/avatar'
+		        END
+		 FROM users
+		 WHERE id = $1::uuid`,
+		userID,
+	).Scan(&name, &email, &isActive, &avatarURL)
+
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && !isActive) {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Authentication required",
+			"data":    gin.H{},
+		})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Could not load user",
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	companies, err := loadCompanyAccess(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Could not load company memberships",
+			"data":    gin.H{},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Authenticated user",
+		"data": gin.H{
+			"user": gin.H{
+				"id":         userID,
+				"name":       name,
+				"email":      email,
 				"avatar_url": nullStringOrNil(avatarURL),
 			},
 			"companies": companies,
