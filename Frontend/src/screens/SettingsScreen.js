@@ -7,6 +7,7 @@ import styles from '../styles/settingsStyles';
 import { useAuth } from '../AuthContext/AuthContext';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import ConfirmationModal from '../components/ConfirmationModal';
+import ReminderSettingsModal from '../components/ReminderSettingsModal';
 
 const comingSoon = () => Alert.alert('Kommer snart', 'Denne funktion er ikke klar endnu.');
 
@@ -14,6 +15,8 @@ export default function SettingsScreen({ navigation }) {
     const { changePassword, user, logout: logoutUser } = useAuth();
     const [isChangePasswordVisible, setIsChangePasswordVisible] = useState(false);
     const [isPasswordChangedVisible, setIsPasswordChangedVisible] = useState(false);
+    const [isReminderSettingsVisible, setIsReminderSettingsVisible] = useState(false);
+    const [isReminderSavedVisible, setIsReminderSavedVisible] = useState(false);
 
     // Fejl kastes videre til modalen, så den kan vise beskeden
     async function handleChangePassword(passwords) {
@@ -64,6 +67,10 @@ export default function SettingsScreen({ navigation }) {
                     <SettingsRow label="Notifikationer & påmindelser" onPress={() => navigation.navigate('Notifications')} isLast />
                 </SettingsGroup>
 
+                <SettingsGroup title="Påmindelser">
+                    <SettingsRow label="Udløb og daglig påmindelse" onPress={() => setIsReminderSettingsVisible(true)} isLast />
+                </SettingsGroup>
+
                 <SettingsGroup title="Privatliv & sikkerhed">
                     <SettingsRow label="Skift adgangskode" onPress={() => setIsChangePasswordVisible(true)} isLast />
                 </SettingsGroup>
@@ -87,6 +94,26 @@ export default function SettingsScreen({ navigation }) {
                 onCancel={() => setIsChangePasswordVisible(false)}
                 onSave={handleChangePassword}
                 onForgotPassword={handleForgotPassword}
+            />
+
+            <ReminderSettingsModal
+                visible={isReminderSettingsVisible}
+                onClose={() => setIsReminderSettingsVisible(false)}
+                onSaved={() => {
+                    setIsReminderSettingsVisible(false);
+                    setIsReminderSavedVisible(true);
+                }}
+            />
+
+            <ConfirmationModal
+                visible={isReminderSavedVisible}
+                variant="status"
+                title="Påmindelser gemt"
+                message="De nye påmindelser gælder fra næste kontrol."
+                confirmText="OK"
+                hideCancel
+                onConfirm={() => setIsReminderSavedVisible(false)}
+                onCancel={() => setIsReminderSavedVisible(false)}
             />
 
             <ConfirmationModal

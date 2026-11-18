@@ -66,3 +66,17 @@ export async function acceptInvitation(invitationId) {
     const data = getResponseData(response);
     return Array.isArray(data) ? data : [];
 }
+
+// Påmindelser for virksomheden (kun ejer/leder): { daysBeforeExpiry, dailyCheckTime: "HH:MM" }
+export async function getReminderSettings(companyID) {
+    const response = await http.get(`/company/${companyID}/reminder-settings`);
+    return getResponseData(response);
+}
+
+export async function updateReminderSettings(companyID, { daysBeforeExpiry, dailyCheckTime }) {
+    const response = await http.put(`/company/${companyID}/reminder-settings`, {
+        daysBeforeExpiry,
+        dailyCheckTime,
+    });
+    return getResponseData(response);
+}
