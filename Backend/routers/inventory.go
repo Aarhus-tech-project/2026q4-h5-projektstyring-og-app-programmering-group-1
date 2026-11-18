@@ -1,7 +1,11 @@
 package routers
 
 import (
+	"context"
 	"database/sql"
+	"errors"
+	"log"
+	"math"
 	"net/http"
 	"regexp"
 	"strings"
@@ -443,6 +447,17 @@ RETURNING id::text`,
 		return
 	}
 
+	shoppingList, err := deductReceivedFromShoppingList(c.Request.Context(), tx, companyID, itemID, request.Quantity)
+	if err != nil {
+		log.Println("Receive: update shopping list error:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Could not update the shopping list",
+			"data":    gin.H{},
+		})
+		return
+	}
+
 	if err := tx.Commit(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -459,9 +474,78 @@ RETURNING id::text`,
 		"success": true,
 		"message": "Received items recorded",
 		"data": gin.H{
-			"batchId": batchID,
+			"batchId":      batchID,
+			"shoppingList": shoppingList,
 		},
 	})
+}
+
+// What happened to the item's shopping list line after receiving goods.
+const (
+	shoppingListNotOnList = "none"    // the item was not on the list
+	shoppingListReduced   = "reduced" // less was received than needed; the rest stays on the list
+	shoppingListRemoved   = "removed" // enough was received; the line was removed
+)
+
+type receivedShoppingListResult struct {
+	Status            string  `json:"status"`
+	RemainingQuantity float64 `json:"remainingQuantity"` // still needed; 0 unless status is "reduced"
+}
+
+// deductReceivedFromShoppingList subtracts the received quantity from the item's shopping
+// list line, or removes the line when the delivery covers it. It runs in the receive
+// transaction, so it happens exactly once per confirmed delivery and is undone if the
+// delivery fails. Lines are matched by item ID. The list quantity and the batch quantity
+// are both in the item's unit (items.unit), so they can be subtracted directly.
+func deductReceivedFromShoppingList(ctx context.Context, tx *sql.Tx, companyID, itemID string, received float64) (receivedShoppingListResult, error) {
+	// Quantities are stored as NUMERIC(12, 3); round the same way so the comparison and the
+	// subtraction match what is saved (and a tiny leftover cannot round to an invalid 0).
+	received = math.Round(received*1000) / 1000
+
+	// Lock the line so a receive and a shopping list edit at the same time cannot both use the old amount
+	var needed float64
+	err := tx.QueryRowContext(
+		ctx,
+		`SELECT quantity::double precision
+		 FROM shopping_list_items
+		 WHERE company_id = $1::uuid AND item_id = $2::uuid
+		 FOR UPDATE`,
+		companyID,
+		itemID,
+	).Scan(&needed)
+	if errors.Is(err, sql.ErrNoRows) {
+		return receivedShoppingListResult{Status: shoppingListNotOnList}, nil
+	}
+	if err != nil {
+		return receivedShoppingListResult{}, err
+	}
+
+	if received >= needed {
+		_, err = tx.ExecContext(
+			ctx,
+			`DELETE FROM shopping_list_items WHERE company_id = $1::uuid AND item_id = $2::uuid`,
+			companyID,
+			itemID,
+		)
+		return receivedShoppingListResult{Status: shoppingListRemoved}, err
+	}
+
+	// Subtract in the database (NUMERIC) so 5 - 4,2 gives exactly 0,8
+	var remaining float64
+	err = tx.QueryRowContext(
+		ctx,
+		`UPDATE shopping_list_items
+		 SET quantity = quantity - $3::numeric, updated_at = now()
+		 WHERE company_id = $1::uuid AND item_id = $2::uuid
+		 RETURNING quantity::double precision`,
+		companyID,
+		itemID,
+		received,
+	).Scan(&remaining)
+	if err != nil {
+		return receivedShoppingListResult{}, err
+	}
+	return receivedShoppingListResult{Status: shoppingListReduced, RemainingQuantity: remaining}, nil
 }
 
 type updateInventoryItemRequest struct {
