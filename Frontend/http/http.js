@@ -1,6 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { resetTo } from '../src/navigation/navigationRef';
+import { getToken, removeToken } from '../src/utils/tokenStorage';
 const SERVER_IP = process.env.EXPO_PUBLIC_SERVER_IP;
 
 const http = axios.create({
@@ -9,7 +10,7 @@ const http = axios.create({
 });
 
 http.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('token');
+  const token = await getToken();
   if (token && token !== 'null' && token !== 'undefined') {
     config.headers.Authorization = `Bearer ${token}`;
   } else {
@@ -29,7 +30,8 @@ http.interceptors.response.use((response) => response, async (error) => {
   const skipAuthRedirect = error.config?.skipAuthRedirect === true;
 
   if (error.response?.status === 401 && !isPublicAuthRequest && !skipAuthRedirect) {
-    await AsyncStorage.multiRemove(['token', 'user']);
+    await removeToken();
+    await AsyncStorage.removeItem('user');
     resetTo('Login');
   }
   return Promise.reject(error);

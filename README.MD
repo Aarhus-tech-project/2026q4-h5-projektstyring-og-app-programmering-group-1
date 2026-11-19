@@ -26,6 +26,44 @@ Appen skal hjælpe medarbejdere med at holde styr på varer, lagerbeholdning og 
 
 
 
+## Sådan startes projektet
+
+### Backend
+
+Kræver [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+
+```bash
+cd Backend
+cp .env.example .env   # udfyld passwords m.m. i .env
+docker compose up -d --build
+```
+
+Det starter databasen, Go-API'et og Caddy. API'et kan nås på `https://localhost`.
+Se [Backend/README.md](Backend/README.md) for flere detaljer.
+
+### Frontend
+
+Kræver [Node.js](https://nodejs.org/).
+
+1. Opret filen `Frontend/.env`:
+
+   ```
+   EXPO_PUBLIC_SERVER_IP=https://<backend-adresse>
+   EXPO_PUBLIC_MODE=development
+   ```
+
+2. Installer og start appen:
+
+   ```bash
+   cd Frontend
+   npm install
+   npm start
+   ```
+
+3. Scan QR-koden med Expo Go på telefonen, eller tryk `a` for Android-emulator.
+
+
+
 ## Gruppe
 
 

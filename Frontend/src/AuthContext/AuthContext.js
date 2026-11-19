@@ -2,9 +2,10 @@ import { createContext, useContext, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import http from '../../http/http';
 import { RemoveExpoToken } from '../utils/notificationUtils';
+import { getToken, saveToken, removeToken } from '../utils/tokenStorage';
 const SERVER_IP = process.env.EXPO_PUBLIC_SERVER_IP;
 
-const TOKEN_KEY = 'token';
+// The token lives encrypted in SecureStore (see tokenStorage.js). The user object is not secret.
 const USER_KEY = 'user';
 
 const AuthContext = createContext(null);
@@ -23,7 +24,7 @@ export function AuthProvider({ children }) {
         let storedToken = null;
         let storedUser = null;
         try {
-            storedToken = await AsyncStorage.getItem(TOKEN_KEY);
+            storedToken = await getToken();
             storedUser = JSON.parse(await AsyncStorage.getItem(USER_KEY) ?? 'null');
         } catch (error) {
             console.error('Could not load stored session;', error);
@@ -39,7 +40,8 @@ export function AuthProvider({ children }) {
             meData = response.data?.data;
         } catch (error) {
             if (error.response?.status === 401) {
-                await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+                await removeToken();
+                await AsyncStorage.removeItem(USER_KEY);
                 return 'invalid';
             }
             return 'unreachable';
@@ -83,7 +85,7 @@ export function AuthProvider({ children }) {
 
         const loggedInCompanies = loginData.companies || [];
 
-        await AsyncStorage.setItem(TOKEN_KEY, loginData.token);
+        await saveToken(loginData.token);
         await AsyncStorage.setItem(USER_KEY, JSON.stringify(loginData.user));
 
         setToken(loginData.token);
@@ -101,7 +103,7 @@ export function AuthProvider({ children }) {
             await RemoveExpoToken();
         }
 
-        await AsyncStorage.removeItem(TOKEN_KEY);
+        await removeToken();
         await AsyncStorage.removeItem(USER_KEY);
         
         setToken(null);
